@@ -11,6 +11,7 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { PromptModal } from "./components/Modal";
 import { Welcome } from "./components/Welcome";
 import { Logo } from "./components/Logo";
+import { useUpdates } from "./lib/updates";
 
 const RECENT_KEY = "noodle.lastVault";
 const SAVE_DELAY_MS = 400;
@@ -46,6 +47,7 @@ export default function App() {
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const updates = useUpdates();
 
   // The last text written to disk, so our own saves are not mistaken for
   // outside edits when the folder watcher fires.
@@ -277,6 +279,12 @@ export default function App() {
         onSearch={() => setOverlay({ kind: "search" })}
         onSettings={() => setOverlay({ kind: "settings" })}
         onSwitchVault={pickVault}
+        updateVersion={updates.state.kind === "available" ? updates.state.info.latest : null}
+        onUpdate={async () => {
+          await flushSave();
+          if (updates.state.kind === "available") updates.install(updates.state.info);
+          setOverlay({ kind: "settings" });
+        }}
       />
       <main className="main">
         <header className="topbar">
@@ -318,7 +326,7 @@ export default function App() {
       </main>
       {overlay?.kind === "switcher" && <QuickSwitcher entries={entries} onOpen={openPath} onCreate={createNote} onClose={() => setOverlay(null)} />}
       {overlay?.kind === "search" && <SearchPanel onOpen={openPath} onClose={() => setOverlay(null)} />}
-      {overlay?.kind === "settings" && <SettingsPanel theme={theme} onChange={setTheme} onClose={() => setOverlay(null)} />}
+      {overlay?.kind === "settings" && <SettingsPanel theme={theme} updates={updates} onChange={setTheme} onClose={() => setOverlay(null)} />}
       {overlay?.kind === "prompt" && (
         <PromptModal
           title={overlay.title}
