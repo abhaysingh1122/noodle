@@ -119,6 +119,8 @@ fn open_vault(app: AppHandle, state: State<AppState>, path: String) -> CmdResult
     let vault = Vault::open(&path)?;
     let root = vault.root().to_path_buf();
     let info = VaultInfo { root: root.to_string_lossy().into_owned(), entries: vault.entries() };
+    // Let the window show images stored in this vault (banners, badges, pictures).
+    let _ = app.asset_protocol_scope().allow_directory(&root, true);
     *state.vault.lock().map_err(|e| e.to_string())? = Some(vault);
     // A failed watcher is not fatal: the app still works, it just won't
     // notice outside edits until the next refresh.
@@ -144,6 +146,22 @@ fn create_vault(app: AppHandle, name: String, parent: Option<String>) -> CmdResu
     }
     std::fs::create_dir_all(&dir).map_err(|e| format!("Couldn't create {}: {e}", dir.display()))?;
     Ok(dir.to_string_lossy().into_owned())
+}
+
+/// Copies an image chosen on the computer into the vault's attachments.
+#[tauri::command]
+fn import_image(state: State<AppState>, source: String) -> CmdResult<String> {
+    with_vault(&state, |v| v.import_file(std::path::Path::new(&source)))
+}
+
+/// Saves pasted image bytes (sent raw, with the file name in a header).
+#[tauri::command]
+fn save_attachment(state: State<AppState>, request: tauri::ipc::Request) -> CmdResult<String> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Expected raw image bytes".into());
+    };
+    let name = request.headers().get("x-file-name").and_then(|h| h.to_str().ok()).unwrap_or("pasted.png");
+    with_vault(&state, |v| v.save_attachment(name, bytes))
 }
 
 #[tauri::command]
@@ -237,6 +255,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_vault,
             create_vault,
+            import_image,
+            save_attachment,
             list_entries,
             read_note,
             write_note,
