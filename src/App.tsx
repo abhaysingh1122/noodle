@@ -267,11 +267,9 @@ export default function App() {
       },
     });
 
-  const rename = async (from: string, newName: string) => {
-    await flushSave();
-    const isFile = /\.md$/i.test(from);
-    const to = `${parentDir(from) ? parentDir(from) + "/" : ""}${newName}${isFile ? ".md" : ""}`;
+  const moveEntry = async (from: string, to: string) => {
     if (to === from) return;
+    await flushSave();
     try {
       await api.renameEntry(from, to);
       await refreshEntries();
@@ -280,11 +278,24 @@ export default function App() {
         const moved = to + n.path.slice(from.length);
         setNote({ ...n, path: moved });
         refreshBacklinks(moved);
+        if (rootRef.current) store(lastNoteKey(rootRef.current), moved);
       }
       setOverlay(null);
     } catch (e) {
       setError(String(e));
     }
+  };
+
+  const rename = (from: string, newName: string) => {
+    const isFile = /\.md$/i.test(from);
+    return moveEntry(from, `${parentDir(from) ? parentDir(from) + "/" : ""}${newName}${isFile ? ".md" : ""}`);
+  };
+
+  /** Drag and drop in the sidebar: puts a note or folder inside another folder ("" = top level). */
+  const moveInto = (from: string, folder: string) => {
+    const name = from.split("/").pop()!;
+    if (folder === from || folder.startsWith(from + "/")) return; // a folder can't go inside itself
+    return moveEntry(from, folder ? `${folder}/${name}` : name);
   };
 
   const promptRename = (path: string) =>
@@ -322,6 +333,7 @@ export default function App() {
         onNewNote={promptNewNote}
         onNewFolder={promptNewFolder}
         onRename={promptRename}
+        onMove={moveInto}
         onTrash={trash}
         onSearch={() => setOverlay({ kind: "search" })}
         onSettings={() => setOverlay({ kind: "settings" })}
