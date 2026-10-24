@@ -1,3 +1,4 @@
+mod http_api;
 mod updater;
 mod vault;
 
@@ -17,6 +18,20 @@ struct AppState {
     /// Hash of the last content Noodle itself wrote to each note, so the
     /// watcher can ignore our own saves instead of reindexing on every one.
     own_writes: Mutex<HashMap<String, u64>>,
+    /// The local HTTP API, when it is switched on.
+    api: Mutex<Option<http_api::ApiServer>>,
+}
+
+/// Gives the HTTP API access to whatever vault is open in the window.
+struct AppAccess(AppHandle);
+
+impl http_api::VaultAccess for AppAccess {
+    fn with_vault<T>(&self, f: impl FnOnce(&mut Vault) -> CmdResult<T>) -> CmdResult<T> {
+        with_vault(&self.0.state::<AppState>(), f)
+    }
+    fn version(&self) -> String {
+        self.0.package_info().version.to_string()
+    }
 }
 
 fn content_hash(content: &str) -> u64 {
@@ -249,6 +264,33 @@ fn graph(state: State<AppState>) -> CmdResult<Graph> {
     with_vault(&state, |v| Ok(v.graph()))
 }
 
+/// Starts, restarts or stops the local HTTP API. Returns the port it listens on.
+#[tauri::command]
+fn configure_api(app: AppHandle, state: State<AppState>, enabled: bool, port: u16, key: String) -> CmdResult<Option<u16>> {
+    let mut slot = state.api.lock().map_err(|e| e.to_string())?;
+    if let Some(old) = slot.take() {
+        old.stop();
+    }
+    if !enabled {
+        return Ok(None);
+    }
+    // The old listener may take a moment to let go of the port.
+    let mut attempt = 0;
+    let server = loop {
+        match http_api::start(AppAccess(app.clone()), port, key.clone()) {
+            Ok(server) => break server,
+            Err(e) if attempt >= 10 => return Err(e),
+            Err(_) => {
+                attempt += 1;
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        }
+    };
+    let port = server.port;
+    *slot = Some(server);
+    Ok(Some(port))
+}
+
 #[tauri::command]
 fn app_version(app: AppHandle) -> String {
     app.package_info().version.to_string()
@@ -296,6 +338,7 @@ pub fn run() {
             backlinks,
             search,
             graph,
+            configure_api,
             app_version,
             check_update,
             install_update
