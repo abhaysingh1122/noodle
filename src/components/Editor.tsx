@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import type { EditorView } from "@tiptap/pm/view";
+import { TextSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import { baseExtensions } from "../editor/extensions";
@@ -26,6 +28,22 @@ interface Props {
 const SERIALIZE_DELAY_MS = 200;
 
 type MarkdownStorage = { markdown: { getMarkdown(): string } };
+
+function saveImages(view: EditorView, all: File[], event: Event): boolean {
+  const files = all.filter((f) => f.type.startsWith("image/"));
+  if (!files.length || !isDesktop) return false;
+  event.preventDefault();
+  for (const file of files) {
+    const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") ?? "png";
+    const name = file.name && file.name !== "image.png" ? file.name : `Pasted ${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.${ext}`;
+    file
+      .arrayBuffer()
+      .then((buf) => api.saveAttachment(name, new Uint8Array(buf)))
+      .then((src) => view.dispatch(view.state.tr.replaceSelectionWith(view.state.schema.nodes.image.create({ src }))))
+      .catch((e) => console.error(e));
+  }
+  return true;
+}
 
 export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef, notes }: Props) {
   const notesRef = useRef(notes);
@@ -74,24 +92,15 @@ export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef, notes
     content: markdown,
     editorProps: {
       attributes: { class: "noodle-prose", spellcheck: "true" },
-      // Pasted pictures (screenshots…) are saved into the vault's attachments.
+      // Pasted or dropped pictures are saved into the vault's attachments.
       handlePaste(view, event) {
-        const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
-        if (!files.length || !isDesktop) return false;
-        event.preventDefault();
-        for (const file of files) {
-          const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") ?? "png";
-          const name = file.name && file.name !== "image.png" ? file.name : `Pasted ${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.${ext}`;
-          file
-            .arrayBuffer()
-            .then((buf) => api.saveAttachment(name, new Uint8Array(buf)))
-            .then((src) => {
-              const image = view.state.schema.nodes.image.create({ src });
-              view.dispatch(view.state.tr.replaceSelectionWith(image));
-            })
-            .catch((e) => console.error(e));
-        }
-        return true;
+        return saveImages(view, [...(event.clipboardData?.files ?? [])], event);
+      },
+      handleDrop(view, event, _slice, moved) {
+        if (moved || ![...(event.dataTransfer?.files ?? [])].some((f) => f.type.startsWith("image/"))) return false;
+        const at = view.posAtCoords({ left: event.clientX, top: event.clientY });
+        if (at) view.dispatch(view.state.tr.setSelection(TextSelection.near(view.state.doc.resolve(at.pos))));
+        return saveImages(view, [...(event.dataTransfer?.files ?? [])], event);
       },
       handleClickOn(_view, _pos, node) {
         if (node.type.name === "wikiLink") {
