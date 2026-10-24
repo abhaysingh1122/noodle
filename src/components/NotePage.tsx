@@ -35,6 +35,7 @@ interface Props {
   onOpenLink(target: string): void;
   onOpenPath(path: string): void;
   flushRef?: { current: (() => void) | null };
+  notes: string[];
 }
 
 export function NotePage(p: Props) {
@@ -108,7 +109,7 @@ export function NotePage(p: Props) {
           onBlur={commitTitle}
           onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
         />
-        <Editor docKey={p.docKey} markdown={p.body} onChange={p.onBodyChange} onOpenLink={p.onOpenLink} flushRef={p.flushRef} />
+        <Editor docKey={p.docKey} markdown={p.body} onChange={p.onBodyChange} onOpenLink={p.onOpenLink} flushRef={p.flushRef} notes={p.notes} />
         <section className="backlinks">
           <h3>
             <Link2 size={15} /> {p.backlinks.length === 0 ? "No strands yet" : p.backlinks.length === 1 ? "1 strand leads here" : `${p.backlinks.length} strands lead here`}
