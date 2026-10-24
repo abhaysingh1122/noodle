@@ -1565,3 +1565,90 @@ kbd {
 .tree-heading.drop-here {
   border-radius: var(--r-pill);
 }
+
+/* Graph view */
+.sidebar-actions button.on {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.graph-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 14px 14px;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--yellow) 55%, transparent), transparent 65%),
+    var(--bg);
+}
+.graph-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  pointer-events: none;
+}
+.graph-bar > * {
+  pointer-events: auto;
+}
+.graph-title {
+  font-weight: 900;
+  font-size: 20px;
+  /* tilted like a sticker on the bowl */
+  transform: rotate(-3deg);
+  background: var(--yellow);
+  padding: 2px 14px;
+  border-radius: var(--r-pill);
+}
+.graph-toggle {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface);
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.graph-toggle input {
+  accent-color: var(--accent);
+}
+.graph-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+}
+.graph-close:hover {
+  color: var(--text);
+  background: var(--accent-soft);
+}
+.graph-canvas {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.graph-hint {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  margin: 0;
+  text-align: center;
+  pointer-events: none;
+}
