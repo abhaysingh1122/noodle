@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { demoApi } from "./demo";
@@ -50,6 +50,14 @@ export interface Api {
   createFolder(path: string): Promise<void>;
   renameEntry(from: string, to: string): Promise<void>;
   trashEntry(path: string): Promise<void>;
+  /** Asks for an image file on the computer; null if cancelled. */
+  pickImage(): Promise<string | null>;
+  /** Copies an image into the vault's attachments and returns its vault path. */
+  importImage(source: string): Promise<string>;
+  /** Saves pasted image bytes into the attachments and returns the vault path. */
+  saveAttachment(name: string, bytes: Uint8Array): Promise<string>;
+  /** A URL the window can load for a file inside the vault. */
+  fileUrl(root: string, path: string): string;
   resolveLink(target: string): Promise<string | null>;
   backlinks(path: string): Promise<Backlink[]>;
   search(query: string): Promise<SearchHit[]>;
@@ -75,6 +83,18 @@ const tauriApi: Api = {
   createFolder: (path) => invoke("create_folder", { path }),
   renameEntry: (from, to) => invoke("rename_entry", { from, to }),
   trashEntry: (path) => invoke("trash_entry", { path }),
+  async pickImage() {
+    const picked = await open({
+      multiple: false,
+      title: "Choose an image",
+      filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "bmp"] }],
+    });
+    return typeof picked === "string" ? picked : null;
+  },
+  importImage: (source) => invoke("import_image", { source }),
+  saveAttachment: (name, bytes) =>
+    invoke("save_attachment", bytes, { headers: { "x-file-name": name.replace(/[^\w.\- ]/g, "_") } }),
+  fileUrl: (root, path) => convertFileSrc(`${root}/${path}`),
   resolveLink: (target) => invoke("resolve_link", { target }),
   backlinks: (path) => invoke("backlinks", { path }),
   search: (query) => invoke("search", { query }),
