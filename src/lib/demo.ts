@@ -107,6 +107,7 @@ export const demoApi: Api = {
     return { nodes: [...files.keys()].map((id) => ({ id, exists: true })), edges };
   },
   onVaultChanged: async () => () => {},
+  configureApi: async (enabled, port) => (enabled ? port : null),
   appVersion: async () => "0.1.0",
   checkUpdate: async () => ({ current: "0.1.0", latest: "0.1.0", available: false, notes: "", pageUrl: "", installerUrl: null, installerSize: 0 }),
   installUpdate: async () => {},
