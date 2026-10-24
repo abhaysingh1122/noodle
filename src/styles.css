@@ -1111,3 +1111,64 @@ kbd {
     padding: 28px 20px 80px;
   }
 }
+
+/* Updates */
+.update-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px 14px 20px;
+  background: var(--bg);
+  border-radius: var(--r-md);
+}
+.update-box p {
+  margin: 2px 0 0;
+}
+.update-box button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.update-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 4px 0;
+  padding: 9px 14px;
+  border-radius: var(--r-pill);
+  background: var(--yellow-strong);
+  color: #2e3326;
+  font-weight: 800;
+  /* a little wiggle so it gets noticed */
+  transform: rotate(-1.5deg);
+  animation: nudge 2.4s ease-in-out 1s 3;
+}
+@keyframes nudge {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  10% {
+    transform: rotate(3deg) scale(1.03);
+  }
+  20% {
+    transform: rotate(-3deg);
+  }
+  30% {
+    transform: rotate(-1.5deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .update-pill,
+  .spin {
+    animation: none;
+  }
+}
