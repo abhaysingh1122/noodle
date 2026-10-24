@@ -6,6 +6,8 @@ import { SlashCommand, slashItems } from "../editor/SlashCommand";
 import { StrandSuggest } from "../editor/StrandSuggest";
 import { FormatBar } from "./FormatBar";
 import { BlockHandle } from "./BlockHandle";
+import { ImageIcon } from "lucide-react";
+import { api, isDesktop } from "../lib/api";
 
 interface Props {
   /** Changes whenever a different note (or an outside edit) is loaded. */
@@ -48,12 +50,49 @@ export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef, notes
     extensions: [
       ...baseExtensions(),
       Placeholder.configure({ placeholder: "Write something, or press / for blocks and [[ to tie in another note…" }),
-      SlashCommand.configure({ getItems: () => slashItems() }),
+      SlashCommand.configure({
+        getItems: () =>
+          slashItems([
+            {
+              id: "image",
+              title: "Image",
+              hint: "From your computer",
+              icon: <ImageIcon size={16} />,
+              keywords: "picture photo upload file",
+              run: async (e, r) => {
+                e.chain().focus().deleteRange(r).run();
+                const picked = await api.pickImage();
+                if (!picked) return;
+                const src = await api.importImage(picked);
+                e.chain().focus().setImage({ src }).run();
+              },
+            },
+          ]),
+      }),
       StrandSuggest.configure({ getNotes: () => notesRef.current }),
     ],
     content: markdown,
     editorProps: {
       attributes: { class: "noodle-prose", spellcheck: "true" },
+      // Pasted pictures (screenshots…) are saved into the vault's attachments.
+      handlePaste(view, event) {
+        const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+        if (!files.length || !isDesktop) return false;
+        event.preventDefault();
+        for (const file of files) {
+          const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") ?? "png";
+          const name = file.name && file.name !== "image.png" ? file.name : `Pasted ${new Date().toISOString().slice(0, 19).replace(/[T:]/g, "-")}.${ext}`;
+          file
+            .arrayBuffer()
+            .then((buf) => api.saveAttachment(name, new Uint8Array(buf)))
+            .then((src) => {
+              const image = view.state.schema.nodes.image.create({ src });
+              view.dispatch(view.state.tr.replaceSelectionWith(image));
+            })
+            .catch((e) => console.error(e));
+        }
+        return true;
+      },
       handleClickOn(_view, _pos, node) {
         if (node.type.name === "wikiLink") {
           onOpenRef.current(node.attrs.target as string);
