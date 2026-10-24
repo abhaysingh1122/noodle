@@ -22,6 +22,9 @@ describe("markdown round trip", () => {
     "> A plain quote",
     "```js\nconst x = [[1]];\n```",
     "A [regular link](https://example.com).",
+    'Some <span style="color: rgb(192, 86, 59);">coloured</span> words.',
+    'A <mark data-color="#fff3b0" style="background-color: rgb(255, 243, 176); color: inherit;">highlight</mark> and <u>underline</u>.',
+    'In <span style="font-family: Georgia, serif;">serif</span> too.',
   ])("keeps %j", (md) => {
     expect(roundTrip(md)).toBe(md);
   });
