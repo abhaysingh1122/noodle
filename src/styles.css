@@ -1652,3 +1652,96 @@ kbd {
   text-align: center;
   pointer-events: none;
 }
+
+/* Vault header: click the name to rename, the swap button to switch vaults */
+.vault-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.vault-head .vault-switcher {
+  flex: 1;
+  min-width: 0;
+}
+.vault-edit {
+  flex: none;
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.vault-switcher:hover .vault-edit {
+  opacity: 1;
+}
+.vault-swap {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--muted);
+}
+.vault-swap:hover {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text);
+}
+
+/* Tree rows: a grip to show they can be dragged, inline renaming, a right-click menu */
+.tree-row {
+  position: relative;
+}
+.row-grip {
+  position: absolute;
+  color: var(--muted);
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 0.12s;
+}
+.tree-row:hover .row-grip {
+  opacity: 0.8;
+}
+.tree-row.active .row-grip {
+  color: inherit;
+}
+.tree-rename {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 2px solid var(--accent);
+  border-radius: var(--r-pill);
+  padding: 2px 10px;
+  background: var(--surface);
+  font-weight: 700;
+  font-size: 14px;
+}
+.context-menu {
+  position: fixed;
+  z-index: 70;
+  min-width: 200px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: 0 2px 6px rgba(40, 50, 30, 0.08), 0 14px 40px rgba(40, 50, 30, 0.18);
+  animation: pop-in 0.12s ease-out;
+  /* opens a hair crooked, then straightens */
+  transform-origin: top left;
+}
+.context-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: var(--r-pill);
+  font-weight: 700;
+  font-size: 14px;
+  text-align: left;
+}
+.context-menu button:hover {
+  background: var(--accent-soft);
+}
+.context-menu button.danger:hover {
+  background: #fde2dd;
+  color: #7a2a1d;
+}
