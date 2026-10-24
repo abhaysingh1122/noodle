@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Backlink, Entry } from "./lib/api";
-import { api, isDesktop, noteName, parentDir } from "./lib/api";
+import { api, isDesktop, parentDir } from "./lib/api";
 import { joinFrontmatter, setField, splitFrontmatter } from "./lib/frontmatter";
 import { applyTheme, loadTheme, saveTheme, type ThemeSettings } from "./lib/theme";
 import { Sidebar } from "./components/Sidebar";
@@ -119,8 +119,9 @@ export default function App() {
 
   const openPath = useCallback(
     async (path: string) => {
-      await flushSave();
       setShowGraph(false);
+      if (noteRef.current?.path === path) return setOverlay(null);
+      await flushSave();
       try {
         const text = await api.readNote(path);
         lastSaved.current = text;
@@ -149,6 +150,7 @@ export default function App() {
         const last = readStored(lastNoteKey(info.root));
         const first = info.entries.find((e) => e.kind === "file" && e.path === last) ?? info.entries.find((e) => e.kind === "file" && /^(welcome|readme|home|index)\.md$/i.test(e.path)) ?? info.entries.find((e) => e.kind === "file");
         setNote(null);
+        noteRef.current = null;
         if (first) openPath(first.path);
       } catch (e) {
         setError(String(e));
@@ -320,13 +322,28 @@ export default function App() {
     return moveEntry(from, folder ? `${folder}/${name}` : name);
   };
 
-  const promptRename = (path: string) =>
+  const promptRenameVault = () =>
     setOverlay({
       kind: "prompt",
-      title: "Rename",
-      initial: noteName(path),
+      title: "Rename this vault (its folder on your computer)",
+      initial: root?.split(/[\\/]/).filter(Boolean).pop() ?? "",
       confirm: "Rename",
-      onSubmit: (name) => rename(path, name),
+      onSubmit: async (name) => {
+        const old = rootRef.current;
+        await flushSave();
+        try {
+          const info = await api.renameVault(name);
+          rootRef.current = info.root;
+          setMediaResolver((p) => api.fileUrl(info.root, p));
+          setRoot(info.root);
+          setEntries(info.entries);
+          store(RECENT_KEY, info.root);
+          const last = old && readStored(lastNoteKey(old));
+          if (last) store(lastNoteKey(info.root), last);
+        } catch (e) {
+          setError(String(e));
+        }
+      },
     });
 
   const trash = async (path: string) => {
@@ -354,7 +371,8 @@ export default function App() {
         onOpen={openPath}
         onNewNote={promptNewNote}
         onNewFolder={promptNewFolder}
-        onRename={promptRename}
+        onRenameTo={(path, name) => rename(path, name)}
+        onRenameVault={promptRenameVault}
         onMove={moveInto}
         onTrash={trash}
         onSearch={() => setOverlay({ kind: "search" })}
