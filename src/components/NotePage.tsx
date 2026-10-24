@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Smile, Link2 } from "lucide-react";
 import type { Backlink } from "../lib/api";
 import { noteName } from "../lib/api";
@@ -47,26 +47,43 @@ export function NotePage(p: Props) {
     if (t && t !== noteName(p.path)) p.onRename(t);
     else setTitle(noteName(p.path));
   };
+  // Banner motion: adding one unrolls it like a flag and knocks the emoji
+  // badge into a wobble; removing it rolls it back up first.
+  const [motion, setMotion] = useState<"unfurl" | "rollup" | null>(null);
+  const motionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(motionTimer.current), []);
+  useEffect(() => setMotion(null), [p.path]);
+  const play = (m: "unfurl" | "rollup", ms: number, then?: () => void) => {
+    clearTimeout(motionTimer.current);
+    setMotion(m);
+    motionTimer.current = setTimeout(() => {
+      setMotion(null);
+      then?.();
+    }, ms);
+  };
+
   const cycleCover = () => {
     const ids = Object.keys(COVERS);
     const current = readField(p.frontmatter, "cover");
     p.onFieldChange("cover", ids[(ids.indexOf(current ?? "") + 1) % ids.length]);
+    if (!current) play("unfurl", 1100);
   };
+  const removeCover = () => play("rollup", 420, () => p.onFieldChange("cover", null));
   const randomIcon = () => p.onFieldChange("icon", ICONS[Math.floor(Math.random() * ICONS.length)]);
 
   return (
     <div className="page-scroll">
       {cover && (
-        <div className="cover" style={{ background: cover }}>
+        <div className={`cover ${motion ?? ""}`} style={{ background: cover }}>
           <div className="cover-actions">
             <button onClick={cycleCover}>Change banner</button>
-            <button onClick={() => p.onFieldChange("cover", null)}>Remove</button>
+            <button onClick={removeCover}>Remove</button>
           </div>
         </div>
       )}
       <article className={`page ${cover ? "has-cover" : ""}`}>
         {icon && (
-          <button className="page-icon" title="Change emoji (right-click to remove)" onClick={randomIcon} onContextMenu={(e) => { e.preventDefault(); p.onFieldChange("icon", null); }}>
+          <button className={`page-icon ${motion === "unfurl" ? "bumped" : ""}`} title="Change emoji (right-click to remove)" onClick={randomIcon} onContextMenu={(e) => { e.preventDefault(); p.onFieldChange("icon", null); }}>
             {icon}
           </button>
         )}
