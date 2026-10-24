@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Backlink, Entry } from "./lib/api";
 import { api, isDesktop, noteName, parentDir } from "./lib/api";
 import { joinFrontmatter, setField, splitFrontmatter } from "./lib/frontmatter";
@@ -65,6 +65,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const updates = useUpdates();
+  const notePaths = useMemo(() => entries.filter((e) => e.kind === "file").map((e) => e.path), [entries]);
 
   // The last text written to disk, so our own saves are not mistaken for
   // outside edits when the folder watcher fires.
@@ -363,6 +364,7 @@ export default function App() {
             onOpenLink={openLink}
             onOpenPath={openPath}
             flushRef={editorFlush}
+            notes={notePaths}
           />
         ) : (
           <div className="empty-state">
