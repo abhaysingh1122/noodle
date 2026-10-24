@@ -28,6 +28,16 @@ export interface Graph {
   edges: [string, string][];
 }
 
+export interface UpdateInfo {
+  current: string;
+  latest: string;
+  available: boolean;
+  notes: string;
+  pageUrl: string;
+  installerUrl: string | null;
+  installerSize: number;
+}
+
 export interface Api {
   pickFolder(): Promise<string | null>;
   openVault(path: string): Promise<VaultInfo>;
@@ -43,6 +53,10 @@ export interface Api {
   search(query: string): Promise<SearchHit[]>;
   graph(): Promise<Graph>;
   onVaultChanged(cb: (paths: string[]) => void): Promise<() => void>;
+  appVersion(): Promise<string>;
+  checkUpdate(): Promise<UpdateInfo>;
+  /** Downloads and runs the installer; the app quits and reopens itself. */
+  installUpdate(url: string, size: number): Promise<void>;
 }
 
 const tauriApi: Api = {
@@ -65,6 +79,9 @@ const tauriApi: Api = {
   async onVaultChanged(cb) {
     return listen<{ paths: string[] }>("vault-changed", (e) => cb(e.payload.paths));
   },
+  appVersion: () => invoke("app_version"),
+  checkUpdate: () => invoke("check_update"),
+  installUpdate: (url, size) => invoke("install_update", { url, size }),
 };
 
 /** True inside the desktop app; false when the UI runs in a plain browser. */
