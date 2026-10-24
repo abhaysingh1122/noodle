@@ -120,6 +120,11 @@ kbd {
   background: var(--accent-soft);
   color: var(--text);
 }
+.ghost.big {
+  padding: 12px 22px;
+  font-size: 16px;
+  background: var(--bg);
+}
 
 /* Layout: two floating rounded panels on the canvas */
 .app {
@@ -998,6 +1003,29 @@ kbd {
 }
 .prompt input:focus {
   outline-color: var(--accent);
+}
+.new-vault {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+}
+.new-vault label {
+  font-weight: 800;
+  font-size: 17px;
+}
+.new-vault input {
+  padding: 12px 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  outline: 2px solid var(--accent);
+  font-weight: 700;
+  font-size: 17px;
+}
+.new-vault p {
+  margin: 0 0 4px 18px;
 }
 .prompt-buttons {
   display: flex;
