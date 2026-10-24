@@ -128,6 +128,33 @@ fn open_vault(app: AppHandle, state: State<AppState>, path: String) -> CmdResult
     Ok(info)
 }
 
+/// Renames the open vault's folder itself, then reopens it under the new name.
+#[tauri::command]
+fn rename_vault(app: AppHandle, state: State<AppState>, name: String) -> CmdResult<VaultInfo> {
+    let root = with_vault(&state, |v| Ok(v.root().to_path_buf()))?;
+    let clean: String = name.trim().chars().filter(|c| !r#"\/:*?"<>|"#.contains(*c)).collect();
+    let clean = clean.trim();
+    if clean.is_empty() {
+        return Err("Give the vault a name".into());
+    }
+    let parent = root.parent().ok_or("This folder can't be renamed")?;
+    let dst = parent.join(clean);
+    if dst == root {
+        return open_vault(app, state, root.to_string_lossy().into_owned());
+    }
+    if dst.exists() {
+        return Err(format!("There is already a folder called {clean} next to this one"));
+    }
+    // Let go of the folder first: Windows won't rename a folder that is being watched.
+    *state.watcher.lock().map_err(|e| e.to_string())? = None;
+    *state.vault.lock().map_err(|e| e.to_string())? = None;
+    if let Err(e) = std::fs::rename(&root, &dst) {
+        open_vault(app, state, root.to_string_lossy().into_owned())?;
+        return Err(format!("Couldn't rename the vault: {e}"));
+    }
+    open_vault(app, state, dst.to_string_lossy().into_owned())
+}
+
 /// Makes a new, empty vault folder: inside `parent` when given, otherwise in
 /// the user's Documents folder. Picks "Name 2", "Name 3"… if the name is taken.
 #[tauri::command]
@@ -255,6 +282,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_vault,
             create_vault,
+            rename_vault,
             import_image,
             save_attachment,
             list_entries,
