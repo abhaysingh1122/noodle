@@ -14,7 +14,7 @@ import { Logo } from "./components/Logo";
 import { useUpdates } from "./lib/updates";
 
 const RECENT_KEY = "noodle.lastVault";
-const SAVE_DELAY_MS = 400;
+const SAVE_DELAY_MS = 300;
 
 interface OpenNote {
   path: string;
@@ -55,6 +55,7 @@ export default function App() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noteRef = useRef<OpenNote | null>(null);
   noteRef.current = note;
+  const editorFlush = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     applyTheme(theme);
@@ -69,6 +70,7 @@ export default function App() {
   const refreshBacklinks = useCallback(async (path: string) => setBacklinks(await api.backlinks(path)), []);
 
   const flushSave = useCallback(async () => {
+    editorFlush.current?.();
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -313,6 +315,7 @@ export default function App() {
             onRename={(name) => rename(note.path, name)}
             onOpenLink={openLink}
             onOpenPath={openPath}
+            flushRef={editorFlush}
           />
         ) : (
           <div className="empty-state">
