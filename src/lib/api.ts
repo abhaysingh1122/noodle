@@ -43,6 +43,8 @@ export interface Api {
   openVault(path: string): Promise<VaultInfo>;
   /** Creates an empty vault folder (in Documents unless a parent is given) and returns its path. */
   createVault(name: string, parent?: string): Promise<string>;
+  /** Renames the open vault's folder and returns it reopened. */
+  renameVault(name: string): Promise<VaultInfo>;
   listEntries(): Promise<Entry[]>;
   readNote(path: string): Promise<string>;
   writeNote(path: string, content: string): Promise<void>;
@@ -76,6 +78,7 @@ const tauriApi: Api = {
   },
   openVault: (path) => invoke("open_vault", { path }),
   createVault: (name, parent) => invoke("create_vault", { name, parent: parent ?? null }),
+  renameVault: (name) => invoke("rename_vault", { name }),
   listEntries: () => invoke("list_entries"),
   readNote: (path) => invoke("read_note", { path }),
   writeNote: (path, content) => invoke("write_note", { path, content }),
