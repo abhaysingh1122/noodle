@@ -32,6 +32,8 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
 | Find | Quick switcher (<kbd>Ctrl O</kbd>), full-text search (<kbd>Ctrl Shift F</kbd>) |
 | Live | Edits made in other apps (or by sync tools, git…) show up instantly |
 | Theme | 4 palettes, custom accent colour, light/dark/system (<kbd>Ctrl ,</kbd>) |
+| Updates | One-click updates from GitHub releases |
+| Motion | Banners unroll like a flag and knock the emoji badge askew |
 
 ## Roadmap
 
@@ -45,7 +47,9 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
 
 ## Install
 
-Download the Windows installer (`.msi` or `.exe`) from [Releases](../../releases), or from the latest "Windows build" run under [Actions](../../actions) → *Artifacts*. Or build it yourself.
+Download `Noodle_<version>_x64-setup.exe` from the [latest release](../../releases/latest) and run it. Windows may say "Windows protected your PC" because the app isn't code-signed yet: click **More info → Run anyway**.
+
+After that you never need to download it again: Noodle checks for a new version when it starts, and an **Update** button appears in the sidebar (also in Settings). One click downloads the new version, installs it and reopens Noodle.
 
 ## Build from source
 
