@@ -10,7 +10,7 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
 ## Why Noodle
 
 - **Your files, your computer.** A vault is just a folder of `.md` files. No account, no cloud, works offline, and any Markdown editor can still open your notes.
-- **Connected notes.** Type `[[` to tie one note to another. Every page shows the strands that lead to it, and soon the whole bowl as a graph.
+- **Connected notes.** Type `[[` to tie one note to another. Every page shows the strands that lead to it, and the graph shows the whole bowl at once.
 - **Soft, round and calm.** Rounded floating panels, emoji badges, pastel banners, bubbly callouts and checklists.
 - **Make it yours.** Pastel green and yellow by default, with more palettes, your own accent colour, and light/dark mode.
 
@@ -19,27 +19,31 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
   <img src="docs/screenshots/dark.png" alt="Noodle in dark mode" width="410">
 </p>
 
-## Features (v0.1)
+## Features
 
 | | |
 |---|---|
-| Vault | Open any folder, file tree with folders, create/rename/trash notes (trash goes to `.trash/` in the folder, nothing is deleted outright) |
-| Editing | Rich editor that reads and writes plain Markdown: headings, lists, checklists, quotes, code, links, images |
-| Strands | `[[Note]]`, `[[Note#Heading]]`, `[[Note\|alias]]`, `![[Embed]]`; clicking a strand to a note that doesn't exist yet creates it |
+| Vault | Start a new vault in one click or open any folder; Noodle reopens your last vault and note. Folders and subfolders, drag notes and folders into each other, rename, trash (to `.trash/`, nothing is deleted outright) |
+| Editing | Rich editor that reads and writes plain Markdown: headings, lists, checklists, quotes, code, links, images. Type Markdown or paste it and it turns into formatting |
+| Blocks | `/` menu to add any block, a grip to drag blocks around, `+` to add one below |
+| Formatting | Select text for a toolbar: turn into heading/list/quote, bold, italic, underline, strike, code, links, text colours, highlights and fonts |
+| Images | Paste a picture or pick one from your computer; it's saved in the vault's `attachments/` folder |
+| Strands | Type `[[` to pick a note; `[[Note]]`, `[[Note#Heading]]`, `[[Note\|alias]]`, `![[Embed]]`; clicking a strand to a note that doesn't exist yet creates it |
 | Backlinks | "Strands lead here" under every page |
 | Callouts | `> [!tip] Title` blocks shown as round coloured bubbles |
-| Page style | Emoji badge and banner stored in the note's frontmatter (`icon: 🍜`, `cover: garden`) |
+| Page style | Emoji badge (or your own picture) and a pastel or uploaded banner, stored in the note's frontmatter (`icon: 🍜`, `cover: garden`) |
+| Graph | <kbd>Ctrl G</kbd> shows every note and strand; drag, zoom, click to open |
 | Find | Quick switcher (<kbd>Ctrl O</kbd>), full-text search (<kbd>Ctrl Shift F</kbd>) |
 | Live | Edits made in other apps (or by sync tools, git…) show up instantly |
 | Theme | 4 palettes, custom accent colour, light/dark/system (<kbd>Ctrl ,</kbd>) |
 | Updates | One-click updates from GitHub releases |
-| Motion | Banners unroll like a flag and knock the emoji badge askew |
+| Motion | Banners unroll like a flag and knock the emoji badge askew (it stays straight until then) |
 
 ## Roadmap
 
-1. ~~Vault, editor, strands, backlinks, search, Windows installer~~ (v0.1)
-2. Block editing: `/` menu, drag handles, toggles, columns, text colours
-3. Graph view and canvas
+1. ~~Vault, editor, strands, backlinks, search, Windows installer~~
+2. ~~Block editing: `/` menu, drag handles, text colours~~; next: toggles, columns, tables
+3. ~~Graph view~~; next: canvas
 4. Databases: table, board and calendar views over note properties
 5. Page lock, hide and encrypt; AI assistant (bring your own API key or a local model)
 6. Local REST API + MCP server + webhooks, so your other tools can use your notes
