@@ -408,7 +408,7 @@ kbd {
 @keyframes bump {
   0%,
   30% {
-    transform: rotate(-5deg) translateY(-24px);
+    transform: rotate(0deg) translateY(-24px);
   }
   50% {
     transform: rotate(-17deg) translateY(4px) scale(0.96);
@@ -471,14 +471,18 @@ kbd {
   background: var(--yellow);
   box-shadow: 0 0 0 6px var(--surface);
   margin-bottom: 8px;
-  /* Deliberately a little crooked: Noodle likes small surprises. */
-  transform: rotate(-5deg);
   transition: transform 0.2s;
 }
+.page-icon:hover {
+  transform: rotate(4deg) scale(1.05);
+}
+/* Once a banner hangs above it, the badge sits a little crooked, as if the
+   banner knocked it. Noodle likes small surprises. */
 .page.has-cover .page-icon {
   margin-top: -48px;
+  transform: rotate(-5deg);
 }
-.page-icon:hover {
+.page.has-cover .page-icon:hover {
   transform: rotate(4deg) scale(1.05);
 }
 .page-controls {
