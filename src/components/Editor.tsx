@@ -124,7 +124,9 @@ export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef, notes
     if (pending.current) clearTimeout(pending.current);
     pending.current = null;
     editor.commands.setContent(markdown, { emitUpdate: false });
-    editor.commands.focus("start");
+    // Don't steal focus from a field the user just clicked into (renaming in the tree…).
+    const active = document.activeElement;
+    if (!active || active === document.body || editor.view.dom.contains(active)) editor.commands.focus("start");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey, editor]);
 
