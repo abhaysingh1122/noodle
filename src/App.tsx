@@ -12,6 +12,7 @@ import { PromptModal } from "./components/Modal";
 import { Welcome } from "./components/Welcome";
 import { Logo } from "./components/Logo";
 import { useUpdates } from "./lib/updates";
+import { setMediaResolver } from "./lib/media";
 
 const RECENT_KEY = "noodle.lastVault";
 /** The note that was open last in each vault, so reopening lands on it again. */
@@ -138,6 +139,7 @@ export default function App() {
         setRoot(info.root);
         setEntries(info.entries);
         rootRef.current = info.root;
+        setMediaResolver((p) => api.fileUrl(info.root, p));
         setError(null);
         store(RECENT_KEY, info.root);
         const last = readStored(lastNoteKey(info.root));
