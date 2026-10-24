@@ -1205,6 +1205,57 @@ kbd {
   }
 }
 
+/* Block grip: floats in the left gutter next to the hovered block */
+.editor-shell {
+  position: relative;
+  margin-left: -58px;
+  padding-left: 58px;
+}
+.block-handle {
+  position: absolute;
+  left: 4px;
+  display: flex;
+  gap: 1px;
+  z-index: 5;
+  animation: pop-in 0.12s ease-out;
+}
+.block-handle button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 26px;
+  border-radius: var(--r-xs);
+  color: var(--muted);
+  opacity: 0.7;
+}
+.block-handle button:hover {
+  opacity: 1;
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.block-handle .grip {
+  cursor: grab;
+}
+.block-handle .grip:active {
+  cursor: grabbing;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+.noodle-prose .ProseMirror-selectednode:not(.wikilink) {
+  border-radius: var(--r-sm);
+  outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 3px;
+}
+.ProseMirror-dropcursor,
+.prosemirror-dropcursor-block {
+  background: var(--accent) !important;
+  border-radius: var(--r-pill);
+}
+
 /* Selection toolbar: a floating pill with pop-out panels */
 .format-bar {
   z-index: 40;
@@ -1341,13 +1392,6 @@ kbd {
 }
 .swatch.on {
   outline: 2px solid var(--accent);
-}
-
-@keyframes pop-in {
-  from {
-    opacity: 0;
-    transform: scale(0.85);
-  }
 }
 
 /* "/" and "[[" pop-up lists */
