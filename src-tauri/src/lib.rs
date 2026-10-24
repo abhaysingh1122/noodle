@@ -1,3 +1,4 @@
+mod updater;
 mod vault;
 
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
@@ -131,6 +132,31 @@ fn graph(state: State<AppState>) -> CmdResult<Graph> {
     with_vault(&state, |v| Ok(v.graph()))
 }
 
+#[tauri::command]
+fn app_version(app: AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+#[tauri::command]
+async fn check_update(app: AppHandle) -> CmdResult<updater::UpdateInfo> {
+    let current = app.package_info().version.to_string();
+    tauri::async_runtime::spawn_blocking(move || updater::check(&current))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Downloads and starts the new installer, then quits so it can replace
+/// the app. The installer reopens Noodle when it finishes.
+#[tauri::command]
+async fn install_update(app: AppHandle, url: String, size: u64) -> CmdResult<()> {
+    let installer = tauri::async_runtime::spawn_blocking(move || updater::download(&url, size))
+        .await
+        .map_err(|e| e.to_string())??;
+    updater::launch_installer(&installer)?;
+    app.exit(0);
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -148,7 +174,10 @@ pub fn run() {
             resolve_link,
             backlinks,
             search,
-            graph
+            graph,
+            app_version,
+            check_update,
+            install_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running Noodle");
