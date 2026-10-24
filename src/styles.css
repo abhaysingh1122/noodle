@@ -382,13 +382,15 @@ kbd {
   background: var(--yellow);
   box-shadow: 0 0 0 6px var(--surface);
   margin-bottom: 8px;
-  transition: transform 0.15s;
+  /* Deliberately a little crooked: Noodle likes small surprises. */
+  transform: rotate(-5deg);
+  transition: transform 0.2s;
 }
 .page.has-cover .page-icon {
   margin-top: -48px;
 }
 .page-icon:hover {
-  transform: rotate(-6deg) scale(1.04);
+  transform: rotate(4deg) scale(1.05);
 }
 .page-controls {
   display: flex;
