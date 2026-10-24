@@ -1,9 +1,12 @@
+import { Download, RefreshCw } from "lucide-react";
 import type { Mode, ThemeSettings } from "../lib/theme";
+import type { useUpdates } from "../lib/updates";
 import { PALETTES } from "../lib/theme";
 import { Modal } from "./Modal";
 import { Logo } from "./Logo";
 
-export function SettingsPanel(props: { theme: ThemeSettings; onChange(t: ThemeSettings): void; onClose(): void }) {
+export function SettingsPanel(props: { theme: ThemeSettings; updates: ReturnType<typeof useUpdates>; onChange(t: ThemeSettings): void; onClose(): void }) {
+  const u = props.updates;
   const t = props.theme;
   const set = (patch: Partial<ThemeSettings>) => props.onChange({ ...t, ...patch });
   return (
@@ -45,6 +48,29 @@ export function SettingsPanel(props: { theme: ThemeSettings; onChange(t: ThemeSe
               {m[0].toUpperCase() + m.slice(1)}
             </button>
           ))}
+        </div>
+        <h4>Updates</h4>
+        <div className="update-box">
+          <div>
+            <b>Noodle {u.version && `v${u.version}`}</b>
+            <p className="muted">
+              {u.state.kind === "idle" && "Noodle checks for a new version every time it starts."}
+              {u.state.kind === "checking" && "Looking for a new version…"}
+              {u.state.kind === "latest" && "You have the newest version."}
+              {u.state.kind === "available" && `Version ${u.state.info.latest} is ready to install.`}
+              {u.state.kind === "installing" && `Downloading ${u.state.info.latest}… Noodle will close, update and reopen by itself.`}
+              {u.state.kind === "error" && u.state.message}
+            </p>
+          </div>
+          {u.state.kind === "available" ? (
+            <button className="primary" onClick={() => u.state.kind === "available" && u.install(u.state.info)}>
+              <Download size={16} /> Update now
+            </button>
+          ) : (
+            <button className="ghost" disabled={u.state.kind === "checking" || u.state.kind === "installing"} onClick={u.check}>
+              <RefreshCw size={15} className={u.state.kind === "checking" || u.state.kind === "installing" ? "spin" : ""} /> Check for updates
+            </button>
+          )}
         </div>
       </div>
     </Modal>
