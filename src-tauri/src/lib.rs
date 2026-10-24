@@ -126,6 +126,26 @@ fn open_vault(app: AppHandle, state: State<AppState>, path: String) -> CmdResult
     Ok(info)
 }
 
+/// Makes a new, empty vault folder: inside `parent` when given, otherwise in
+/// the user's Documents folder. Picks "Name 2", "Name 3"… if the name is taken.
+#[tauri::command]
+fn create_vault(app: AppHandle, name: String, parent: Option<String>) -> CmdResult<String> {
+    let parent = match parent {
+        Some(p) => std::path::PathBuf::from(p),
+        None => app.path().document_dir().or_else(|_| app.path().home_dir()).map_err(|e| e.to_string())?,
+    };
+    let clean: String = name.trim().chars().filter(|c| !r#"\/:*?"<>|"#.contains(*c)).collect();
+    let clean = if clean.trim().is_empty() { "Noodle".to_string() } else { clean.trim().to_string() };
+    let mut dir = parent.join(&clean);
+    let mut n = 2;
+    while dir.exists() {
+        dir = parent.join(format!("{clean} {n}"));
+        n += 1;
+    }
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Couldn't create {}: {e}", dir.display()))?;
+    Ok(dir.to_string_lossy().into_owned())
+}
+
 #[tauri::command]
 fn list_entries(state: State<AppState>) -> CmdResult<Vec<Entry>> {
     with_vault(&state, |v| Ok(v.entries()))
@@ -216,6 +236,7 @@ pub fn run() {
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             open_vault,
+            create_vault,
             list_entries,
             read_note,
             write_note,
