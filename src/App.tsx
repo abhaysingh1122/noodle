@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Backlink, Entry } from "./lib/api";
-import { api, noteName, parentDir } from "./lib/api";
+import { api, isDesktop, noteName, parentDir } from "./lib/api";
 import { joinFrontmatter, setField, splitFrontmatter } from "./lib/frontmatter";
 import { applyTheme, loadTheme, saveTheme, type ThemeSettings } from "./lib/theme";
 import { Sidebar } from "./components/Sidebar";
@@ -14,6 +14,8 @@ import { Logo } from "./components/Logo";
 import { useUpdates } from "./lib/updates";
 
 const RECENT_KEY = "noodle.lastVault";
+/** The note that was open last in each vault, so reopening lands on it again. */
+const lastNoteKey = (root: string) => `noodle.lastNote:${root}`;
 const SAVE_DELAY_MS = 300;
 
 interface OpenNote {
@@ -30,17 +32,32 @@ type Overlay =
   | { kind: "settings" }
   | { kind: "prompt"; title: string; initial?: string; confirm: string; onSubmit(v: string): void };
 
-function readRecent(): string | null {
+function readStored(key: string): string | null {
   try {
-    return localStorage.getItem(RECENT_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
+function store(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Not remembering it is fine.
+  }
+}
+
+const readRecent = () => readStored(RECENT_KEY);
+
 export default function App() {
   const [theme, setTheme] = useState<ThemeSettings>(loadTheme);
   const [root, setRoot] = useState<string | null>(null);
+  const rootRef = useRef<string | null>(null);
+  rootRef.current = root;
+  // On the desktop, the last vault reopens by itself; the welcome screen
+  // only shows while that is happening or if it fails.
+  const [starting, setStarting] = useState(() => isDesktop && !!readRecent());
   const [entries, setEntries] = useState<Entry[]>([]);
   const [note, setNote] = useState<OpenNote | null>(null);
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
@@ -105,6 +122,7 @@ export default function App() {
         setNote((prev) => ({ path, ...parts, version: (prev?.version ?? 0) + 1 }));
         setOverlay(null);
         refreshBacklinks(path);
+        if (rootRef.current) store(lastNoteKey(rootRef.current), path);
       } catch (e) {
         setError(String(e));
       }
@@ -118,20 +136,43 @@ export default function App() {
         const info = await api.openVault(path);
         setRoot(info.root);
         setEntries(info.entries);
+        rootRef.current = info.root;
         setError(null);
-        try {
-          localStorage.setItem(RECENT_KEY, info.root);
-        } catch {
-          // Not remembering the folder is fine.
-        }
-        const first = info.entries.find((e) => e.kind === "file" && /^(welcome|readme|home|index)\.md$/i.test(e.path)) ?? info.entries.find((e) => e.kind === "file");
+        store(RECENT_KEY, info.root);
+        const last = readStored(lastNoteKey(info.root));
+        const first = info.entries.find((e) => e.kind === "file" && e.path === last) ?? info.entries.find((e) => e.kind === "file" && /^(welcome|readme|home|index)\.md$/i.test(e.path)) ?? info.entries.find((e) => e.kind === "file");
         setNote(null);
         if (first) openPath(first.path);
       } catch (e) {
         setError(String(e));
+      } finally {
+        setStarting(false);
       }
     },
     [openPath],
+  );
+
+  useEffect(() => {
+    const recent = readRecent();
+    if (isDesktop && recent) openVault(recent);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const createVault = useCallback(
+    async (name: string, chooseParent: boolean) => {
+      try {
+        let parent: string | undefined;
+        if (chooseParent) {
+          const picked = await api.pickFolder();
+          if (!picked) return;
+          parent = picked;
+        }
+        openVault(await api.createVault(name, parent));
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [openVault],
   );
 
   const pickVault = useCallback(async () => {
@@ -264,7 +305,8 @@ export default function App() {
   };
 
   if (!root) {
-    return <Welcome recent={readRecent()} error={error} onPick={pickVault} onOpenRecent={openVault} />;
+    if (starting) return <div className="welcome" />;
+    return <Welcome recent={readRecent()} error={error} onPick={pickVault} onOpenRecent={openVault} onCreate={createVault} />;
   }
 
   return (
@@ -280,7 +322,12 @@ export default function App() {
         onTrash={trash}
         onSearch={() => setOverlay({ kind: "search" })}
         onSettings={() => setOverlay({ kind: "settings" })}
-        onSwitchVault={pickVault}
+        onSwitchVault={async () => {
+          // Back to the welcome screen, to open or start another vault.
+          await flushSave();
+          setNote(null);
+          setRoot(null);
+        }}
         updateVersion={updates.state.kind === "available" ? updates.state.info.latest : null}
         onUpdate={async () => {
           await flushSave();
