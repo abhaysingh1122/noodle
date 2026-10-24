@@ -11,6 +11,7 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { PromptModal } from "./components/Modal";
 import { Welcome } from "./components/Welcome";
 import { Logo } from "./components/Logo";
+import { GraphView } from "./components/GraphView";
 import { useUpdates } from "./lib/updates";
 import { setMediaResolver } from "./lib/media";
 
@@ -65,6 +66,8 @@ export default function App() {
   const [overlay, setOverlay] = useState<Overlay | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showGraph, setShowGraph] = useState(false);
+  const [graphVersion, setGraphVersion] = useState(0);
   const updates = useUpdates();
   const notePaths = useMemo(() => entries.filter((e) => e.kind === "file").map((e) => e.path), [entries]);
 
@@ -117,6 +120,7 @@ export default function App() {
   const openPath = useCallback(
     async (path: string) => {
       await flushSave();
+      setShowGraph(false);
       try {
         const text = await api.readNote(path);
         lastSaved.current = text;
@@ -204,12 +208,29 @@ export default function App() {
     [createNote, flushSave, openPath],
   );
 
+  const openFromGraph = useCallback(
+    (id: string, exists: boolean) => {
+      setShowGraph(false);
+      if (exists) openPath(id);
+      else openLink(id);
+    },
+    [openLink, openPath],
+  );
+
+  useEffect(() => {
+    if (!showGraph) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !overlay && setShowGraph(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showGraph, overlay]);
+
   // Pick up edits made outside Noodle (another editor, Syncthing, git pull…).
   useEffect(() => {
     if (!root) return;
     let unlisten: (() => void) | undefined;
     api.onVaultChanged(async (paths) => {
       refreshEntries();
+      setGraphVersion((v) => v + 1);
       const n = noteRef.current;
       if (!n) return;
       refreshBacklinks(n.path);
@@ -237,6 +258,7 @@ export default function App() {
       else if (k === "f" && e.shiftKey) setOverlay({ kind: "search" });
       else if (k === "n") createNote(note ? `${parentDir(note.path) ? parentDir(note.path) + "/" : ""}Untitled` : "Untitled");
       else if (k === ",") setOverlay({ kind: "settings" });
+      else if (k === "g") setShowGraph((g) => !g);
       else if (k === "s") flushSave();
       else return;
       e.preventDefault();
@@ -336,6 +358,8 @@ export default function App() {
         onMove={moveInto}
         onTrash={trash}
         onSearch={() => setOverlay({ kind: "search" })}
+        onGraph={() => setShowGraph((g) => !g)}
+        graphOpen={showGraph}
         onSettings={() => setOverlay({ kind: "settings" })}
         onSwitchVault={async () => {
           // Back to the welcome screen, to open or start another vault.
@@ -360,7 +384,9 @@ export default function App() {
             {error} <span className="muted">(click to dismiss)</span>
           </div>
         )}
-        {note ? (
+        {showGraph ? (
+          <GraphView activePath={note?.path ?? null} onOpen={openFromGraph} onClose={() => setShowGraph(false)} version={graphVersion} />
+        ) : note ? (
           <NotePage
             key={note.path}
             path={note.path}
