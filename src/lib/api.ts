@@ -65,6 +65,8 @@ export interface Api {
   search(query: string): Promise<SearchHit[]>;
   graph(): Promise<Graph>;
   onVaultChanged(cb: (paths: string[]) => void): Promise<() => void>;
+  /** Starts, restarts or stops the local HTTP API; resolves to its port, or null when off. */
+  configureApi(enabled: boolean, port: number, key: string): Promise<number | null>;
   appVersion(): Promise<string>;
   checkUpdate(): Promise<UpdateInfo>;
   /** Downloads and runs the installer; the app quits and reopens itself. */
@@ -105,6 +107,7 @@ const tauriApi: Api = {
   async onVaultChanged(cb) {
     return listen<{ paths: string[] }>("vault-changed", (e) => cb(e.payload.paths));
   },
+  configureApi: (enabled, port, key) => invoke("configure_api", { enabled, port, key }),
   appVersion: () => invoke("app_version"),
   checkUpdate: () => invoke("check_update"),
   installUpdate: (url, size) => invoke("install_update", { url, size }),
