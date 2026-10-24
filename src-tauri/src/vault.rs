@@ -15,6 +15,9 @@ use walkdir::WalkDir;
 /// such as `.git`, `.trash` and app settings folders.
 const IGNORED_DIRS: &[&str] = &["node_modules"];
 
+/// Where uploaded images (emoji badges, banners, pasted pictures) are kept.
+pub const ATTACHMENTS_DIR: &str = "attachments";
+
 fn is_ignored_dir(name: &str) -> bool {
     name.starts_with('.') || IGNORED_DIRS.contains(&name)
 }
@@ -315,6 +318,35 @@ impl Vault {
         Ok(())
     }
 
+    /// Saves a file into the vault's `attachments/` folder under a free name
+    /// ("photo.png", "photo 1.png"…) and returns its vault path.
+    pub fn save_attachment(&self, name: &str, bytes: &[u8]) -> Result<String> {
+        let clean: String = name.chars().filter(|c| !r#"\/:*?"<>|"#.contains(*c) && !c.is_control()).collect();
+        let clean = clean.trim().trim_start_matches('.');
+        let clean = if clean.is_empty() { "image.png" } else { clean };
+        let (stem, ext) = match clean.rsplit_once('.') {
+            Some((s, e)) if !s.is_empty() => (s.to_string(), format!(".{e}")),
+            _ => (clean.to_string(), String::new()),
+        };
+        let mut rel = format!("{ATTACHMENTS_DIR}/{stem}{ext}");
+        let mut n = 1;
+        while self.resolve_path(&rel)?.exists() {
+            rel = format!("{ATTACHMENTS_DIR}/{stem} {n}{ext}");
+            n += 1;
+        }
+        let p = self.resolve_path(&rel)?;
+        fs::create_dir_all(p.parent().ok_or("invalid path")?).map_err(err)?;
+        fs::write(&p, bytes).map_err(err)?;
+        Ok(rel)
+    }
+
+    /// Copies a file from anywhere on the computer into `attachments/`.
+    pub fn import_file(&self, source: &Path) -> Result<String> {
+        let name = source.file_name().ok_or("not a file")?.to_string_lossy().into_owned();
+        let bytes = fs::read(source).map_err(|e| format!("Couldn't read {}: {e}", source.display()))?;
+        self.save_attachment(&name, &bytes)
+    }
+
     /// Finds the note a link target points at: an exact vault path first,
     /// then any note with that file name (the shortest path wins).
     pub fn resolve_link(&self, target: &str) -> Option<String> {
@@ -500,6 +532,15 @@ mod tests {
         assert_eq!(hits[0].path, "Recipes.md");
         assert_eq!(hits[0].line, 2);
         assert!(v.search("recipes", 10)[0].line == 0);
+    }
+
+    #[test]
+    fn attachments_get_free_names_inside_the_vault() {
+        let (_dir, v) = vault_with(&[]);
+        assert_eq!(v.save_attachment("cat.png", b"1").unwrap(), "attachments/cat.png");
+        assert_eq!(v.save_attachment("cat.png", b"2").unwrap(), "attachments/cat 1.png");
+        assert_eq!(v.save_attachment("../../evil.png", b"3").unwrap(), "attachments/evil.png");
+        assert_eq!(v.read("attachments/cat 1.png").unwrap(), "2");
     }
 
     #[test]
