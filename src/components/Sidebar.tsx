@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { ChevronRight, FilePlus, FolderPlus, Search, Settings, Trash2, Pencil, FileText, Folder, Sparkles, Waypoints } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight, FilePlus, FolderPlus, Search, Settings, Trash2, Pencil, FileText, Folder, Sparkles, Waypoints, GripVertical, Repeat } from "lucide-react";
 import type { Entry } from "../lib/api";
 import { noteName } from "../lib/api";
 import { Logo } from "./Logo";
@@ -36,7 +36,9 @@ interface Props {
   onOpen(path: string): void;
   onNewNote(folder: string): void;
   onNewFolder(folder: string): void;
-  onRename(path: string): void;
+  /** Renames in place, from the inline editor in the tree. */
+  onRenameTo(path: string, newName: string): void;
+  onRenameVault(): void;
   /** Moves a note or folder into a folder ("" = the top level). */
   onMove(path: string, folder: string): void;
   onTrash(path: string): void;
@@ -91,6 +93,26 @@ export function Sidebar(props: Props) {
     setDropTarget(null);
   };
 
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [menu, setMenu] = useState<{ path: string; folder: boolean; x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = () => setMenu(null);
+    window.addEventListener("mousedown", close);
+    window.addEventListener("blur", close);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("blur", close);
+    };
+  }, [menu]);
+
+  const finishRename = (path: string, value: string) => {
+    setRenaming(null);
+    const name = value.trim().replace(/[\\/:*?"<>|]/g, "");
+    const current = path.split("/").pop()!.replace(/\.md$/i, "");
+    if (name && name !== current) props.onRenameTo(path, name);
+  };
+
   const toggle = (path: string) =>
     setCollapsed((s) => {
       const next = new Set(s);
@@ -106,10 +128,18 @@ export function Sidebar(props: Props) {
       <div key={entry.path}>
         <div
           className={`tree-row ${props.activePath === entry.path ? "active" : ""} ${isFolder && dropTarget === entry.path ? "drop-here" : ""}`}
-          style={{ paddingLeft: 8 + depth * 14 }}
-          onClick={() => (isFolder ? toggle(entry.path) : props.onOpen(entry.path))}
-          title={entry.path}
-          draggable
+          style={{ paddingLeft: 20 + depth * 14 }}
+          onClick={() => renaming !== entry.path && (isFolder ? toggle(entry.path) : props.onOpen(entry.path))}
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            setRenaming(entry.path);
+          }}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenu({ path: entry.path, folder: isFolder, x: e.clientX, y: e.clientY });
+          }}
+          title={`${entry.path}\nDrag to move · double-click to rename · right-click for more`}
+          draggable={renaming !== entry.path}
           onDragStart={(e) => {
             dragging.current = entry.path;
             e.dataTransfer.effectAllowed = "move";
@@ -119,13 +149,29 @@ export function Sidebar(props: Props) {
           onDragOver={(e) => dragOver(e, isFolder ? entry.path : parentOf(entry.path))}
           onDrop={(e) => drop(e, isFolder ? entry.path : parentOf(entry.path))}
         >
+          <GripVertical size={13} className="row-grip" style={{ left: 3 + depth * 14 }} />
           {isFolder ? (
             <ChevronRight size={14} className={`chevron ${open ? "open" : ""}`} />
           ) : (
             <span className="chevron-spacer" />
           )}
           {isFolder ? <Folder size={15} className="row-icon" /> : <FileText size={15} className="row-icon" />}
-          <span className="tree-label">{isFolder ? entry.path.split("/").pop() : noteName(entry.path)}</span>
+          {renaming === entry.path ? (
+            <input
+              className="tree-rename"
+              autoFocus
+              defaultValue={isFolder ? entry.path.split("/").pop() : noteName(entry.path)}
+              onFocus={(e) => e.target.select()}
+              onClick={(e) => e.stopPropagation()}
+              onBlur={(e) => finishRename(entry.path, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                if (e.key === "Escape") setRenaming(null);
+              }}
+            />
+          ) : (
+            <span className="tree-label">{isFolder ? entry.path.split("/").pop() : noteName(entry.path)}</span>
+          )}
           <span className="row-actions" onClick={(e) => e.stopPropagation()}>
             {isFolder && (
               <button title="New note here" onClick={() => props.onNewNote(entry.path)}>
@@ -137,7 +183,7 @@ export function Sidebar(props: Props) {
                 <FolderPlus size={13} />
               </button>
             )}
-            <button title="Rename" onClick={() => props.onRename(entry.path)}>
+            <button title="Rename" onClick={() => setRenaming(entry.path)}>
               <Pencil size={13} />
             </button>
             <button title="Move to trash" onClick={() => props.onTrash(entry.path)}>
@@ -152,22 +198,28 @@ export function Sidebar(props: Props) {
 
   return (
     <aside className="sidebar">
-      <button className="vault-switcher" onClick={props.onSwitchVault} title="Open or start another vault">
-        <Logo size={26} />
-        <span className="vault-name">{props.vaultName}</span>
-      </button>
+      <div className="vault-head">
+        <button className="vault-switcher" onClick={props.onRenameVault} title="Rename this vault">
+          <Logo size={26} />
+          <span className="vault-name">{props.vaultName}</span>
+          <Pencil size={13} className="vault-edit" />
+        </button>
+        <button className="vault-swap" onClick={props.onSwitchVault} title="Open or start another vault">
+          <Repeat size={15} />
+        </button>
+      </div>
       <nav className="sidebar-actions">
         <button onClick={props.onSearch}>
           <Search size={15} /> Search <kbd>Ctrl Shift F</kbd>
-        </button>
-        <button onClick={props.onGraph} className={props.graphOpen ? "on" : ""}>
-          <Waypoints size={15} /> Graph <kbd>Ctrl G</kbd>
         </button>
         <button onClick={() => props.onNewNote("")}>
           <FilePlus size={15} /> New note <kbd>Ctrl N</kbd>
         </button>
         <button onClick={() => props.onNewFolder("")}>
           <FolderPlus size={15} /> New folder
+        </button>
+        <button onClick={props.onGraph} className={props.graphOpen ? "on" : ""}>
+          <Waypoints size={15} /> Graph <kbd>Ctrl G</kbd>
         </button>
       </nav>
       <div
@@ -185,6 +237,31 @@ export function Sidebar(props: Props) {
       >
         {tree.map((n) => renderNode(n, 0))}
       </div>
+      {menu && (
+        <div className="context-menu" style={{ left: menu.x, top: menu.y }} onMouseDown={(e) => e.stopPropagation()}>
+          {menu.folder && (
+            <button onClick={() => (props.onNewNote(menu.path), setMenu(null))}>
+              <FilePlus size={14} /> New note inside
+            </button>
+          )}
+          {menu.folder && (
+            <button onClick={() => (props.onNewFolder(menu.path), setMenu(null))}>
+              <FolderPlus size={14} /> New folder inside
+            </button>
+          )}
+          <button onClick={() => (setRenaming(menu.path), setMenu(null))}>
+            <Pencil size={14} /> Rename
+          </button>
+          {parentOf(menu.path) && (
+            <button onClick={() => (props.onMove(menu.path, ""), setMenu(null))}>
+              <Repeat size={14} /> Move to top level
+            </button>
+          )}
+          <button className="danger" onClick={() => (props.onTrash(menu.path), setMenu(null))}>
+            <Trash2 size={14} /> Move to trash
+          </button>
+        </div>
+      )}
       {props.updateVersion && (
         <button className="update-pill" onClick={props.onUpdate} title="Install the new version">
           <Sparkles size={15} /> Update to v{props.updateVersion}
