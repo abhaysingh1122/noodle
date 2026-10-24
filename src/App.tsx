@@ -14,6 +14,7 @@ import { Logo } from "./components/Logo";
 import { GraphView } from "./components/GraphView";
 import { useUpdates } from "./lib/updates";
 import { setMediaResolver } from "./lib/media";
+import { useLocalApi } from "./lib/localApi";
 
 const RECENT_KEY = "noodle.lastVault";
 /** The note that was open last in each vault, so reopening lands on it again. */
@@ -69,6 +70,7 @@ export default function App() {
   const [showGraph, setShowGraph] = useState(false);
   const [graphVersion, setGraphVersion] = useState(0);
   const updates = useUpdates();
+  const localApi = useLocalApi();
   const notePaths = useMemo(() => entries.filter((e) => e.kind === "file").map((e) => e.path), [entries]);
 
   // The last text written to disk, so our own saves are not mistaken for
@@ -436,7 +438,7 @@ export default function App() {
       </main>
       {overlay?.kind === "switcher" && <QuickSwitcher entries={entries} onOpen={openPath} onCreate={createNote} onClose={() => setOverlay(null)} />}
       {overlay?.kind === "search" && <SearchPanel onOpen={openPath} onClose={() => setOverlay(null)} />}
-      {overlay?.kind === "settings" && <SettingsPanel theme={theme} updates={updates} onChange={setTheme} onClose={() => setOverlay(null)} />}
+      {overlay?.kind === "settings" && <SettingsPanel theme={theme} updates={updates} localApi={localApi} onChange={setTheme} onClose={() => setOverlay(null)} />}
       {overlay?.kind === "prompt" && (
         <PromptModal
           title={overlay.title}
