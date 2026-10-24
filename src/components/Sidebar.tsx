@@ -97,7 +97,7 @@ export function Sidebar(props: Props) {
 
   return (
     <aside className="sidebar">
-      <button className="vault-switcher" onClick={props.onSwitchVault} title="Open another folder">
+      <button className="vault-switcher" onClick={props.onSwitchVault} title="Open or start another vault">
         <Logo size={26} />
         <span className="vault-name">{props.vaultName}</span>
       </button>
