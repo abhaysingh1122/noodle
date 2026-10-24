@@ -129,12 +129,12 @@ export function FormatBar({ editor }: { editor: Editor }) {
       {panel === "color" && (
         <div className="format-panel">
           <div className="panel-label">Text</div>
-          <div className="swatches">
+          <div className="fmt-swatches">
             {TEXT_COLORS.map((c) => (
               <button
                 key={c.name}
                 title={c.name}
-                className={`swatch text ${state.color === c.value ? "on" : ""}`}
+                className={`fmt-swatch text ${state.color === c.value ? "on" : ""}`}
                 style={{ color: c.value ?? "var(--text)" }}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => (c.value ? chain().setColor(c.value).run() : chain().unsetColor().run())}
@@ -144,12 +144,12 @@ export function FormatBar({ editor }: { editor: Editor }) {
             ))}
           </div>
           <div className="panel-label">Highlight</div>
-          <div className="swatches">
+          <div className="fmt-swatches">
             {HIGHLIGHTS.map((h) => (
               <button
                 key={h.name}
                 title={h.name}
-                className="swatch"
+                className="fmt-swatch"
                 style={{ background: h.value ?? "var(--bg)" }}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => (h.value ? chain().setHighlight({ color: h.value }).run() : chain().unsetHighlight().run())}
