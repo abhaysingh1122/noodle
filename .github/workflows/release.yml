@@ -1,16 +1,20 @@
 name: Windows build
 
-# Builds the Windows installers on every push to main (download them from the
-# run's "Artifacts"). Pushing a tag like v0.1.0 also publishes a draft release.
+# Every push to main builds the Windows installers and publishes them as a
+# GitHub release named v0.1.<build number>. The app's "Update now" button
+# installs the newest release.
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    tags: ["v*"]
     paths-ignore: ["**.md", "docs/**"]
 
 permissions:
   contents: write
+
+concurrency:
+  group: windows-release
+  cancel-in-progress: false
 
 jobs:
   windows:
@@ -25,14 +29,25 @@ jobs:
           node-version: 22
           cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
+      - name: Stamp the version
+        shell: pwsh
+        run: |
+          $version = "0.1.${{ github.run_number }}"
+          $conf = Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json
+          $conf.version = $version
+          $conf | ConvertTo-Json -Depth 20 | Set-Content src-tauri/tauri.conf.json
+          (Get-Content src-tauri/Cargo.toml) -replace '^version = ".*"', "version = `"$version`"" | Set-Content src-tauri/Cargo.toml
+          "VERSION=$version" >> $env:GITHUB_ENV
       - run: pnpm install --frozen-lockfile
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: Noodle ${{ github.ref_name }}
-          releaseDraft: true
+          tagName: v${{ env.VERSION }}
+          releaseName: Noodle v${{ env.VERSION }}
+          releaseBody: Built from ${{ github.sha }}. Install the .exe, or click "Update now" inside Noodle.
+          releaseDraft: false
+          prerelease: false
           args: --bundles msi,nsis
       - uses: actions/upload-artifact@v4
         with:
