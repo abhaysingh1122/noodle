@@ -342,6 +342,95 @@ kbd {
   border-radius: var(--r-lg);
   position: relative;
 }
+/* Adding a banner unrolls it downward like a flag, pushing the page down. */
+.cover.unfurl {
+  overflow: hidden;
+  transform-origin: top center;
+  animation: unfurl 0.9s cubic-bezier(0.25, 1.4, 0.45, 1) both;
+}
+.cover.unfurl::after {
+  /* the rolled-up bottom edge of the flag */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 14px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, #2e3326 14%, transparent);
+  animation: hem 0.9s ease-out both;
+}
+.cover.rollup {
+  overflow: hidden;
+  animation: rollup 0.42s cubic-bezier(0.55, 0, 0.75, 0.2) both;
+}
+@keyframes unfurl {
+  0% {
+    height: 0;
+    transform: skewX(0deg);
+  }
+  45% {
+    transform: skewX(2.5deg);
+  }
+  65% {
+    transform: skewX(-1.5deg);
+  }
+  80% {
+    transform: skewX(0.6deg);
+  }
+  100% {
+    height: 190px;
+    transform: none;
+  }
+}
+@keyframes hem {
+  0%,
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes rollup {
+  from {
+    height: 190px;
+  }
+  to {
+    height: 0;
+    margin-top: 0;
+  }
+}
+/* ...and the falling banner knocks the emoji badge askew before it settles. */
+.page-icon.bumped {
+  animation: bump 1.1s cubic-bezier(0.3, 1.5, 0.5, 1) both;
+}
+@keyframes bump {
+  0%,
+  30% {
+    transform: rotate(-5deg) translateY(-24px);
+  }
+  50% {
+    transform: rotate(-17deg) translateY(4px) scale(0.96);
+  }
+  68% {
+    transform: rotate(3deg) translateY(-3px);
+  }
+  84% {
+    transform: rotate(-8deg);
+  }
+  100% {
+    transform: rotate(-5deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cover.unfurl,
+  .cover.unfurl::after,
+  .cover.rollup,
+  .page-icon.bumped {
+    animation: none;
+  }
+}
 .cover-actions {
   position: absolute;
   right: 16px;
