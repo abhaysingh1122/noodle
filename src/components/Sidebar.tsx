@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronRight, FilePlus, FolderPlus, Search, Settings, Trash2, Pencil, FileText, Folder, Sparkles } from "lucide-react";
 import type { Entry } from "../lib/api";
 import { noteName } from "../lib/api";
@@ -37,6 +37,8 @@ interface Props {
   onNewNote(folder: string): void;
   onNewFolder(folder: string): void;
   onRename(path: string): void;
+  /** Moves a note or folder into a folder ("" = the top level). */
+  onMove(path: string, folder: string): void;
   onTrash(path: string): void;
   onSearch(): void;
   onSettings(): void;
@@ -46,9 +48,46 @@ interface Props {
   onUpdate(): void;
 }
 
+const DRAG_TYPE = "application/x-noodle-path";
+const parentOf = (path: string) => path.split("/").slice(0, -1).join("/");
+
 export function Sidebar(props: Props) {
   const tree = useMemo(() => buildTree(props.entries), [props.entries]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // Drag and drop: what is being dragged, and which folder ("" = top) it would land in.
+  const dragging = useRef<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const openTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const canDrop = (folder: string) => {
+    const from = dragging.current;
+    return !!from && from !== folder && !folder.startsWith(from + "/") && parentOf(from) !== folder;
+  };
+  const dragOver = (e: React.DragEvent, folder: string) => {
+    if (!canDrop(folder)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    if (dropTarget !== folder) {
+      setDropTarget(folder);
+      // Hovering a closed folder for a moment opens it, so you can go deeper.
+      clearTimeout(openTimer.current);
+      if (folder && collapsed.has(folder)) openTimer.current = setTimeout(() => toggle(folder), 650);
+    }
+  };
+  const drop = (e: React.DragEvent, folder: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const from = dragging.current;
+    endDrag();
+    if (from && canDropFrom(from, folder)) props.onMove(from, folder);
+  };
+  const canDropFrom = (from: string, folder: string) => from !== folder && !folder.startsWith(from + "/") && parentOf(from) !== folder;
+  const endDrag = () => {
+    dragging.current = null;
+    clearTimeout(openTimer.current);
+    setDropTarget(null);
+  };
 
   const toggle = (path: string) =>
     setCollapsed((s) => {
@@ -64,10 +103,19 @@ export function Sidebar(props: Props) {
     return (
       <div key={entry.path}>
         <div
-          className={`tree-row ${props.activePath === entry.path ? "active" : ""}`}
+          className={`tree-row ${props.activePath === entry.path ? "active" : ""} ${isFolder && dropTarget === entry.path ? "drop-here" : ""}`}
           style={{ paddingLeft: 8 + depth * 14 }}
           onClick={() => (isFolder ? toggle(entry.path) : props.onOpen(entry.path))}
           title={entry.path}
+          draggable
+          onDragStart={(e) => {
+            dragging.current = entry.path;
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData(DRAG_TYPE, entry.path);
+          }}
+          onDragEnd={endDrag}
+          onDragOver={(e) => dragOver(e, isFolder ? entry.path : parentOf(entry.path))}
+          onDrop={(e) => drop(e, isFolder ? entry.path : parentOf(entry.path))}
         >
           {isFolder ? (
             <ChevronRight size={14} className={`chevron ${open ? "open" : ""}`} />
@@ -80,6 +128,11 @@ export function Sidebar(props: Props) {
             {isFolder && (
               <button title="New note here" onClick={() => props.onNewNote(entry.path)}>
                 <FilePlus size={13} />
+              </button>
+            )}
+            {isFolder && (
+              <button title="New folder inside" onClick={() => props.onNewFolder(entry.path)}>
+                <FolderPlus size={13} />
               </button>
             )}
             <button title="Rename" onClick={() => props.onRename(entry.path)}>
@@ -112,8 +165,21 @@ export function Sidebar(props: Props) {
           <FolderPlus size={15} /> New folder
         </button>
       </nav>
-      <div className="tree-heading">Notes</div>
-      <div className="tree">{tree.map((n) => renderNode(n, 0))}</div>
+      <div
+        className={`tree-heading ${dropTarget === "" ? "drop-here" : ""}`}
+        onDragOver={(e) => dragOver(e, "")}
+        onDrop={(e) => drop(e, "")}
+      >
+        Notes
+      </div>
+      <div
+        className={`tree ${dropTarget === "" ? "drop-root" : ""}`}
+        onDragOver={(e) => dragOver(e, "")}
+        onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setDropTarget(null)}
+        onDrop={(e) => drop(e, "")}
+      >
+        {tree.map((n) => renderNode(n, 0))}
+      </div>
       {props.updateVersion && (
         <button className="update-pill" onClick={props.onUpdate} title="Install the new version">
           <Sparkles size={15} /> Update to v{props.updateVersion}
