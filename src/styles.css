@@ -346,6 +346,7 @@ kbd {
   margin: 14px 18px 0;
   border-radius: var(--r-lg);
   position: relative;
+  z-index: 2;
 }
 /* Adding a banner unrolls it downward like a flag, pushing the page down. */
 .cover.unfurl {
@@ -445,7 +446,8 @@ kbd {
   opacity: 0;
   transition: opacity 0.15s;
 }
-.cover:hover .cover-actions {
+.cover:hover .cover-actions,
+.cover-actions.pinned {
   opacity: 1;
 }
 .cover-actions button {
@@ -456,6 +458,7 @@ kbd {
   font-weight: 700;
 }
 .page {
+  position: relative;
   max-width: 740px;
   margin: 0 auto;
   padding: 48px 48px 120px;
@@ -465,7 +468,7 @@ kbd {
 }
 .page-icon {
   position: relative;
-  z-index: 1;
+  z-index: 3;
   display: grid;
   place-items: center;
   width: 96px;
@@ -1453,4 +1456,93 @@ kbd {
   padding: 8px 10px;
   color: var(--muted);
   font-weight: 600;
+}
+
+/* Emoji and banner pickers */
+.popover {
+  position: absolute;
+  z-index: 30;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  box-shadow: 0 2px 6px rgba(40, 50, 30, 0.08), 0 14px 40px rgba(40, 50, 30, 0.18);
+  padding: 10px;
+  animation: pop-in 0.14s ease-out;
+}
+.icon-picker {
+  /* no offsets: it opens right where the badge sits in the page */
+  margin-top: 4px;
+  width: 340px;
+  transform-origin: top left;
+}
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+}
+.emoji-grid button {
+  font-size: 22px;
+  height: 36px;
+  border-radius: 12px;
+  transition: transform 0.1s;
+}
+.emoji-grid button:hover {
+  background: var(--accent-soft);
+  transform: scale(1.18) rotate(-6deg);
+}
+.popover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.popover-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.popover-action:hover {
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.banner-picker {
+  right: 16px;
+  top: calc(100% - 8px);
+  width: 300px;
+}
+.banner-swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 0 4px 8px;
+}
+.banner-swatches button {
+  height: 44px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  transition: transform 0.12s;
+}
+.banner-swatches button:hover {
+  transform: translateY(-2px) rotate(-1.5deg);
+}
+.page-icon.is-image {
+  overflow: hidden;
+  padding: 0;
+}
+.page-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.noodle-prose img {
+  max-width: 100%;
+  border-radius: var(--r-md);
 }
