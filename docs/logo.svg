@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Noodle">
+  <rect x="8" y="8" width="240" height="240" rx="60" fill="#FFF6CC"/>
+  <!-- chopsticks -->
+  <path d="M150 34 L112 150" stroke="#5E6B3A" stroke-width="10" stroke-linecap="round"/>
+  <path d="M176 40 L124 152" stroke="#5E6B3A" stroke-width="10" stroke-linecap="round"/>
+  <!-- noodles -->
+  <g fill="none" stroke="#F2C94C" stroke-width="12" stroke-linecap="round">
+    <path d="M70 140 C 80 110, 92 110, 98 128 S 116 150, 122 120"/>
+    <path d="M100 142 C 108 116, 122 112, 130 130 S 148 150, 156 118"/>
+    <path d="M132 142 C 140 118, 154 114, 162 132 S 178 146, 186 128"/>
+  </g>
+  <!-- bowl -->
+  <path d="M40 136 H216 C216 186 178 214 128 214 C78 214 40 186 40 136 Z" fill="#A9D8A0"/>
+  <path d="M40 136 H216" stroke="#5E6B3A" stroke-width="10" stroke-linecap="round"/>
+  <path d="M96 214 H160" stroke="#5E6B3A" stroke-width="10" stroke-linecap="round"/>
+  <path d="M64 164 C 84 188, 110 194, 132 192" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="8" stroke-linecap="round"/>
+</svg>
