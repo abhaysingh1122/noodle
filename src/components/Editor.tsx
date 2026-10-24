@@ -5,6 +5,7 @@ import { baseExtensions } from "../editor/extensions";
 import { SlashCommand, slashItems } from "../editor/SlashCommand";
 import { StrandSuggest } from "../editor/StrandSuggest";
 import { FormatBar } from "./FormatBar";
+import { BlockHandle } from "./BlockHandle";
 
 interface Props {
   /** Changes whenever a different note (or an outside edit) is loaded. */
@@ -92,6 +93,7 @@ export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef, notes
     <div className="editor-shell" ref={shell}>
       <EditorContent editor={editor} />
       {editor && <FormatBar editor={editor} />}
+      {editor && <BlockHandle editor={editor} shell={shell} />}
     </div>
   );
 }
