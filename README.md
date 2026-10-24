@@ -39,6 +39,35 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
 | Updates | One-click updates from GitHub releases |
 | Motion | Banners unroll like a flag and knock the emoji badge askew (it stays straight until then) |
 
+## Local API
+
+Switch on **Settings → Connections → Local API** to let scripts and other apps on your computer read and write notes over HTTP. It listens on `127.0.0.1` only (port 27183 by default) and every call needs the key shown in Settings.
+
+```sh
+# list notes
+curl.exe http://127.0.0.1:27183/v1/notes -H "Authorization: Bearer <key>"
+# read one (".md" is optional)
+curl.exe http://127.0.0.1:27183/v1/notes/Ideas/Big%20plan -H "Authorization: Bearer <key>"
+# create or replace
+curl.exe -X PUT http://127.0.0.1:27183/v1/notes/Inbox --data-binary "# Inbox" -H "Authorization: Bearer <key>"
+# add a line to the end
+curl.exe -X POST http://127.0.0.1:27183/v1/notes/Inbox/append --data-binary "- new idea" -H "Authorization: Bearer <key>"
+```
+
+| Method | Path | Does |
+|---|---|---|
+| GET | `/v1/health` | Is Noodle running? (no key needed) |
+| GET | `/v1/notes` | Every note and folder |
+| GET | `/v1/notes/<path>` | A note's Markdown |
+| PUT | `/v1/notes/<path>` | Create or replace a note with the request body |
+| POST | `/v1/notes/<path>/append` | Add the request body to the end of a note |
+| DELETE | `/v1/notes/<path>` | Move a note to `.trash/` |
+| GET | `/v1/search?q=<words>` | Search names and text |
+| GET | `/v1/backlinks/<path>` | Strands that lead to a note |
+| GET | `/v1/graph` | All notes and strands |
+
+Changes made through the API show up in the open window right away. On Windows use `curl.exe` (in PowerShell plain `curl` is a different command).
+
 ## Roadmap
 
 1. ~~Vault, editor, strands, backlinks, search, Windows installer~~
@@ -46,7 +75,7 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
 3. ~~Graph view~~; next: canvas
 4. Databases: table, board and calendar views over note properties
 5. Page lock, hide and encrypt; AI assistant (bring your own API key or a local model)
-6. Local REST API + MCP server + webhooks, so your other tools can use your notes
+6. ~~Local REST API~~; next: MCP server, webhooks, reaching it from other devices
 7. Phone ⇄ PC sync, with no server required
 
 ## Install
