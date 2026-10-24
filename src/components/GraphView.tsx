@@ -1,19 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
+import { forceCollide, forceLink, forceManyBody, forceSimulation, forceX, forceY, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force";
 import { api, noteName, type Graph } from "../lib/api";
 
-interface SimNode {
+interface SimNode extends SimulationNodeDatum {
   id: string;
   label: string;
   exists: boolean;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
   degree: number;
-  /** Pinned while being dragged. */
-  fixed: boolean;
 }
+type SimLink = SimulationLinkDatum<SimNode> & { source: SimNode; target: SimNode };
 
 interface Props {
   activePath: string | null;
@@ -48,39 +44,51 @@ export function GraphView({ activePath, onOpen, onClose, version }: Props) {
     // Keep positions of nodes we already had, so reloads don't jump.
     const prev = (canvas as unknown as { _nodes?: Map<string, SimNode> })._nodes ?? new Map<string, SimNode>();
     const keep = new Set(graph.nodes.filter((n) => showMissing || n.exists).map((n) => n.id));
-    const edges = graph.edges.filter(([a, b]) => keep.has(a) && keep.has(b));
     const nodes = new Map<string, SimNode>();
-    graph.nodes.forEach((n, i) => {
-      if (!keep.has(n.id)) return;
+    for (const n of graph.nodes) {
+      if (!keep.has(n.id)) continue;
       const old = prev.get(n.id);
-      const angle = i * 2.399963; // golden angle spiral for a tidy start
-      const radius = 18 * Math.sqrt(i + 1);
-      nodes.set(n.id, {
-        id: n.id,
-        label: n.exists ? noteName(n.id) : n.id,
-        exists: n.exists,
-        x: old?.x ?? Math.cos(angle) * radius,
-        y: old?.y ?? Math.sin(angle) * radius,
-        vx: 0,
-        vy: 0,
-        degree: 0,
-        fixed: false,
-      });
-    });
+      nodes.set(n.id, { id: n.id, label: n.exists ? noteName(n.id) : n.id, exists: n.exists, degree: 0, x: old?.x, y: old?.y });
+    }
     (canvas as unknown as { _nodes?: Map<string, SimNode> })._nodes = nodes;
-    const links = edges.map(([a, b]) => [nodes.get(a)!, nodes.get(b)!] as const);
-    links.forEach(([a, b]) => (a.degree++, b.degree++));
+    const links: SimLink[] = graph.edges
+      .filter(([a, b]) => keep.has(a) && keep.has(b))
+      .map(([a, b]) => ({ source: nodes.get(a)!, target: nodes.get(b)! }));
+    links.forEach((l) => (l.source.degree++, l.target.degree++));
     const list = [...nodes.values()];
     setCount({ notes: list.filter((n) => n.exists).length, strands: links.length });
     const neighbours = new Map<string, Set<string>>();
-    links.forEach(([a, b]) => {
+    for (const { source: a, target: b } of links) {
       (neighbours.get(a.id) ?? neighbours.set(a.id, new Set()).get(a.id)!).add(b.id);
       (neighbours.get(b.id) ?? neighbours.set(b.id, new Set()).get(b.id)!).add(a.id);
-    });
+    }
 
-    const radius = (n: SimNode) => 5 + Math.min(10, Math.sqrt(n.degree) * 2.4);
+    const radius = (n: SimNode) => 4 + Math.min(12, Math.sqrt(n.degree) * 2.2);
+    // Clusters of linked notes pull together, everything pushes everything
+    // else away, and loose notes drift in a ring around the middle.
+    const sim = forceSimulation<SimNode>(list)
+      .force("link", forceLink<SimNode, SimLink>(links).distance((l) => 40 + Math.min(60, (l.source.degree + l.target.degree) * 2)).strength(0.5))
+      .force("charge", forceManyBody<SimNode>().strength((n) => -60 - n.degree * 12).distanceMax(600))
+      .force("collide", forceCollide<SimNode>((n) => radius(n) + 6))
+      .force("x", forceX<SimNode>(0).strength((n) => (n.degree ? 0.04 : 0.09)))
+      .force("y", forceY<SimNode>(0).strength((n) => (n.degree ? 0.04 : 0.09)))
+      .stop();
+    // Settle the layout before the first frame, within a time budget.
+    const started = performance.now();
+    while (sim.alpha() > 0.02 && performance.now() - started < 250) sim.tick();
+
     let view = { x: 0, y: 0, k: 1 };
-    let alpha = 1;
+    // Fit the whole bowl in the window.
+    const fit = () => {
+      const r = canvas.getBoundingClientRect();
+      if (!list.length || !r.width) return;
+      const xs = list.map((n) => n.x ?? 0);
+      const ys = list.map((n) => n.y ?? 0);
+      const w = Math.max(...xs) - Math.min(...xs) + 120;
+      const h = Math.max(...ys) - Math.min(...ys) + 120;
+      const k = Math.min(2, Math.max(0.15, Math.min(r.width / w, r.height / h)));
+      view = { k, x: -((Math.max(...xs) + Math.min(...xs)) / 2) * k, y: -((Math.max(...ys) + Math.min(...ys)) / 2) * k };
+    };
     let hover: SimNode | null = null;
     let drag: { node: SimNode | null; sx: number; sy: number; moved: boolean; vx: number; vy: number } | null = null;
     let frame = 0;
@@ -90,9 +98,9 @@ export function GraphView({ activePath, onOpen, onClose, version }: Props) {
       const r = canvas.getBoundingClientRect();
       canvas.width = r.width * dpr;
       canvas.height = r.height * dpr;
-      alpha = Math.max(alpha, 0.05);
     };
     resize();
+    if (!prev.size) fit();
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
@@ -105,60 +113,13 @@ export function GraphView({ activePath, onOpen, onClose, version }: Props) {
       let best: SimNode | null = null;
       let bestD = Infinity;
       for (const n of list) {
-        const d = Math.hypot(n.x - p.x, n.y - p.y);
+        const d = Math.hypot((n.x ?? 0) - p.x, (n.y ?? 0) - p.y);
         if (d < radius(n) + 6 / view.k && d < bestD) {
           best = n;
           bestD = d;
         }
       }
       return best;
-    };
-
-    const step = () => {
-      // Repulsion between every pair, springs along strands, and a soft pull to the middle.
-      for (let i = 0; i < list.length; i++) {
-        const a = list[i];
-        for (let j = i + 1; j < list.length; j++) {
-          const b = list[j];
-          let dx = a.x - b.x;
-          let dy = a.y - b.y;
-          let d2 = dx * dx + dy * dy;
-          if (d2 < 0.01) {
-            dx = Math.random() - 0.5;
-            dy = Math.random() - 0.5;
-            d2 = 0.25;
-          }
-          if (d2 > 250000) continue;
-          const f = (900 / d2) * alpha;
-          a.vx += dx * f;
-          a.vy += dy * f;
-          b.vx -= dx * f;
-          b.vy -= dy * f;
-        }
-      }
-      for (const [a, b] of links) {
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const d = Math.hypot(dx, dy) || 1;
-        const f = ((d - 70) / d) * 0.06 * alpha;
-        a.vx += dx * f;
-        a.vy += dy * f;
-        b.vx -= dx * f;
-        b.vy -= dy * f;
-      }
-      for (const n of list) {
-        n.vx -= n.x * 0.004 * alpha;
-        n.vy -= n.y * 0.004 * alpha;
-        if (n.fixed) {
-          n.vx = n.vy = 0;
-          continue;
-        }
-        n.vx *= 0.6;
-        n.vy *= 0.6;
-        n.x += n.vx;
-        n.y += n.vy;
-      }
-      alpha *= 0.985;
     };
 
     const draw = () => {
@@ -177,53 +138,64 @@ export function GraphView({ activePath, onOpen, onClose, version }: Props) {
       const near = focus ? neighbours.get(focus.id) ?? new Set<string>() : null;
 
       // Strands: soft curves, so the graph looks more like noodles than wires.
-      for (const [a, b] of links) {
+      for (const { source: a, target: b } of links) {
         const lit = focus && (a === focus || b === focus);
-        ctx.globalAlpha = focus ? (lit ? 0.9 : 0.12) : 0.45;
+        ctx.globalAlpha = focus ? (lit ? 0.9 : 0.06) : 0.35;
         ctx.strokeStyle = lit ? accent : muted;
-        ctx.lineWidth = (lit ? 2.2 : 1.3) / Math.sqrt(view.k);
-        const mx = (a.x + b.x) / 2;
-        const my = (a.y + b.y) / 2;
-        const bend = 0.12;
+        ctx.lineWidth = (lit ? 2 : 1) / Math.sqrt(view.k);
+        const ax = a.x ?? 0, ay = a.y ?? 0, bx = b.x ?? 0, by = b.y ?? 0;
+        const bend = 0.08;
         ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.quadraticCurveTo(mx - (b.y - a.y) * bend, my + (b.x - a.x) * bend, b.x, b.y);
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo((ax + bx) / 2 - (by - ay) * bend, (ay + by) / 2 + (bx - ax) * bend, bx, by);
         ctx.stroke();
       }
       for (const n of list) {
         const dim = focus && n !== focus && !near!.has(n.id);
-        ctx.globalAlpha = dim ? 0.25 : 1;
+        ctx.globalAlpha = dim ? 0.2 : 1;
         const r = radius(n);
         ctx.beginPath();
-        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+        ctx.arc(n.x ?? 0, n.y ?? 0, r, 0, Math.PI * 2);
         if (n.exists) {
           ctx.fillStyle = n.id === activePath ? yellow : accent;
           ctx.fill();
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = surface;
-          ctx.stroke();
         } else {
           ctx.fillStyle = surface;
           ctx.fill();
           ctx.setLineDash([3, 3]);
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 1.2;
           ctx.strokeStyle = muted;
           ctx.stroke();
           ctx.setLineDash([]);
         }
-        const showLabel = view.k > 0.7 || n === focus || n.id === activePath || n.degree > 3;
-        if (showLabel && !dim) {
-          ctx.fillStyle = n.exists ? text : muted;
-          ctx.font = `${n === focus ? 800 : 650} ${12 / Math.min(view.k, 1.4)}px "Nunito Variable", Nunito, sans-serif`;
-          ctx.textAlign = "center";
-          ctx.fillText(n.label, n.x, n.y + r + 13 / Math.min(view.k, 1.4));
-        }
+      }
+
+      // Labels: big notes first, fading in as you zoom, never on top of each other.
+      const placed: [number, number, number, number][] = [];
+      const fontPx = 12 / view.k;
+      ctx.font = `700 ${fontPx}px "Nunito Variable", Nunito, sans-serif`;
+      ctx.textAlign = "center";
+      const byImportance = [...list].sort((a, b) => Number(b === focus) - Number(a === focus) || b.degree - a.degree);
+      for (const n of byImportance) {
+        const isFocus = n === focus || n.id === activePath || (near?.has(n.id) ?? false);
+        const fade = isFocus ? 1 : Math.min(1, Math.max(0, (view.k * (1 + n.degree / 8) - 0.9) / 0.5));
+        if (fade <= 0.02 || (focus && !isFocus)) continue;
+        const label = n.label.length > 32 ? n.label.slice(0, 30) + "…" : n.label;
+        const tw = ctx.measureText(label).width;
+        const x = n.x ?? 0;
+        const y = (n.y ?? 0) + radius(n) + fontPx * 1.1;
+        const box: [number, number, number, number] = [x - tw / 2 - 3 / view.k, y - fontPx, x + tw / 2 + 3 / view.k, y + fontPx * 0.3];
+        if (!isFocus && placed.some((p) => box[0] < p[2] && box[2] > p[0] && box[1] < p[3] && box[3] > p[1])) continue;
+        placed.push(box);
+        ctx.globalAlpha = fade;
+        ctx.fillStyle = n.exists ? text : muted;
+        ctx.fillText(label, x, y);
       }
       ctx.globalAlpha = 1;
     };
 
     const loop = () => {
-      if (alpha > 0.004) step();
+      if (sim.alpha() > sim.alphaMin()) sim.tick();
       draw();
       frame = requestAnimationFrame(loop);
     };
@@ -232,7 +204,10 @@ export function GraphView({ activePath, onOpen, onClose, version }: Props) {
     const onDown = (e: PointerEvent) => {
       canvas.setPointerCapture(e.pointerId);
       const node = nodeAt(e.clientX, e.clientY);
-      if (node) node.fixed = true;
+      if (node) {
+        node.fx = node.x;
+        node.fy = node.y;
+      }
       drag = { node, sx: e.clientX, sy: e.clientY, moved: false, vx: view.x, vy: view.y };
     };
     const onMove = (e: PointerEvent) => {
@@ -247,9 +222,9 @@ export function GraphView({ activePath, onOpen, onClose, version }: Props) {
       if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 3) drag.moved = true;
       if (drag.node) {
         const p = toWorld(e.clientX, e.clientY);
-        drag.node.x = p.x;
-        drag.node.y = p.y;
-        alpha = Math.max(alpha, 0.3);
+        drag.node.fx = p.x;
+        drag.node.fy = p.y;
+        if (sim.alpha() < 0.2) sim.alpha(0.2);
       } else {
         view = { ...view, x: drag.vx + e.clientX - drag.sx, y: drag.vy + e.clientY - drag.sy };
         canvas.style.cursor = "grabbing";
@@ -258,7 +233,8 @@ export function GraphView({ activePath, onOpen, onClose, version }: Props) {
     const onUp = () => {
       if (!drag) return;
       if (drag.node) {
-        drag.node.fixed = false;
+        drag.node.fx = null;
+        drag.node.fy = null;
         if (!drag.moved) onOpen(drag.node.id, drag.node.exists);
       }
       drag = null;
@@ -281,6 +257,7 @@ export function GraphView({ activePath, onOpen, onClose, version }: Props) {
     canvas.addEventListener("wheel", onWheel, { passive: false });
     return () => {
       cancelAnimationFrame(frame);
+      sim.stop();
       ro.disconnect();
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointermove", onMove);
