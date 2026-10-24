@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ChevronRight, FilePlus, FolderPlus, Search, Settings, Trash2, Pencil, FileText, Folder, Sparkles } from "lucide-react";
+import { ChevronRight, FilePlus, FolderPlus, Search, Settings, Trash2, Pencil, FileText, Folder, Sparkles, Waypoints } from "lucide-react";
 import type { Entry } from "../lib/api";
 import { noteName } from "../lib/api";
 import { Logo } from "./Logo";
@@ -41,6 +41,8 @@ interface Props {
   onMove(path: string, folder: string): void;
   onTrash(path: string): void;
   onSearch(): void;
+  onGraph(): void;
+  graphOpen: boolean;
   onSettings(): void;
   onSwitchVault(): void;
   /** Set when a newer version is ready to install. */
@@ -157,6 +159,9 @@ export function Sidebar(props: Props) {
       <nav className="sidebar-actions">
         <button onClick={props.onSearch}>
           <Search size={15} /> Search <kbd>Ctrl Shift F</kbd>
+        </button>
+        <button onClick={props.onGraph} className={props.graphOpen ? "on" : ""}>
+          <Waypoints size={15} /> Graph <kbd>Ctrl G</kbd>
         </button>
         <button onClick={() => props.onNewNote("")}>
           <FilePlus size={15} /> New note <kbd>Ctrl N</kbd>
