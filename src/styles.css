@@ -1204,3 +1204,148 @@ kbd {
     animation: none;
   }
 }
+
+/* Selection toolbar: a floating pill with pop-out panels */
+.format-bar {
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.format-row,
+.format-panel,
+.suggest-menu {
+  background: var(--surface);
+  border-radius: var(--r-pill);
+  box-shadow: 0 2px 6px rgba(40, 50, 30, 0.08), 0 14px 40px rgba(40, 50, 30, 0.18);
+  border: 1px solid var(--border);
+}
+.format-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+}
+.format-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 32px;
+  min-width: 32px;
+  justify-content: center;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.format-row button:hover {
+  background: var(--bg);
+}
+.format-row button.on {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.format-row .format-block {
+  padding: 0 10px 0 14px;
+  white-space: nowrap;
+}
+.format-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--border);
+}
+.color-a {
+  font-weight: 900;
+  font-size: 15px;
+  padding: 0 4px;
+  border-radius: 6px;
+  text-decoration: underline 3px var(--yellow-strong);
+  text-underline-offset: 2px;
+}
+.format-panel {
+  border-radius: var(--r-md);
+  padding: 8px;
+  min-width: 200px;
+}
+.format-panel.list {
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  overflow-y: auto;
+}
+.format-panel.list button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: var(--r-sm);
+  font-weight: 650;
+  text-align: left;
+}
+.format-panel.list button:hover {
+  background: var(--accent-soft);
+}
+.format-panel.link {
+  display: flex;
+  gap: 6px;
+  min-width: 320px;
+  border-radius: var(--r-pill);
+  padding: 5px;
+}
+.format-panel.link input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  font-weight: 600;
+}
+.format-panel.link .primary {
+  padding: 6px 16px;
+}
+.panel-label {
+  font-size: 11.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  padding: 4px 8px 6px;
+}
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 6px 8px;
+  max-width: 300px;
+}
+.swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  font-weight: 900;
+  font-size: 14px;
+  color: var(--muted);
+  transition: transform 0.1s;
+}
+.swatch:nth-child(odd) {
+  /* small surprise: the swatches sit slightly askew, like stickers */
+  transform: rotate(-4deg);
+}
+.swatch:hover {
+  transform: scale(1.15) rotate(3deg);
+}
+.swatch.on {
+  outline: 2px solid var(--accent);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
