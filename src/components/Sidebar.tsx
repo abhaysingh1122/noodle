@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, FilePlus, FolderPlus, Search, Settings, Trash2, Pencil, FileText, Folder } from "lucide-react";
+import { ChevronRight, FilePlus, FolderPlus, Search, Settings, Trash2, Pencil, FileText, Folder, Sparkles } from "lucide-react";
 import type { Entry } from "../lib/api";
 import { noteName } from "../lib/api";
 import { Logo } from "./Logo";
@@ -41,6 +41,9 @@ interface Props {
   onSearch(): void;
   onSettings(): void;
   onSwitchVault(): void;
+  /** Set when a newer version is ready to install. */
+  updateVersion: string | null;
+  onUpdate(): void;
 }
 
 export function Sidebar(props: Props) {
@@ -111,6 +114,11 @@ export function Sidebar(props: Props) {
       </nav>
       <div className="tree-heading">Notes</div>
       <div className="tree">{tree.map((n) => renderNode(n, 0))}</div>
+      {props.updateVersion && (
+        <button className="update-pill" onClick={props.onUpdate} title="Install the new version">
+          <Sparkles size={15} /> Update to v{props.updateVersion}
+        </button>
+      )}
       <button className="sidebar-footer" onClick={props.onSettings}>
         <Settings size={15} /> Settings
       </button>
