@@ -1385,14 +1385,14 @@ kbd {
   color: var(--muted);
   padding: 4px 8px 6px;
 }
-.swatches {
+.fmt-swatches {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
   padding: 0 6px 8px;
   max-width: 300px;
 }
-.swatch {
+.fmt-swatch {
   width: 26px;
   height: 26px;
   border-radius: 9px;
@@ -1402,14 +1402,14 @@ kbd {
   color: var(--muted);
   transition: transform 0.1s;
 }
-.swatch:nth-child(odd) {
+.fmt-swatch:nth-child(odd) {
   /* small surprise: the swatches sit slightly askew, like stickers */
   transform: rotate(-4deg);
 }
-.swatch:hover {
+.fmt-swatch:hover {
   transform: scale(1.15) rotate(3deg);
 }
-.swatch.on {
+.fmt-swatch.on {
   outline: 2px solid var(--accent);
 }
 
