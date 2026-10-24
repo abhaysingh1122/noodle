@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import { baseExtensions } from "../editor/extensions";
+import { FormatBar } from "./FormatBar";
 
 interface Props {
   /** Changes whenever a different note (or an outside edit) is loaded. */
@@ -11,6 +12,8 @@ interface Props {
   onOpenLink(target: string): void;
   /** Receives a function that delivers any not-yet-reported edit right away. */
   flushRef?: { current: (() => void) | null };
+  /** Note paths, for the "[[" picker. */
+  notes: string[];
 }
 
 // Turning the whole document back into Markdown on every keystroke is what
@@ -19,7 +22,10 @@ const SERIALIZE_DELAY_MS = 200;
 
 type MarkdownStorage = { markdown: { getMarkdown(): string } };
 
-export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef }: Props) {
+export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef, notes }: Props) {
+  const notesRef = useRef(notes);
+  notesRef.current = notes;
+  const shell = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
   const onOpenRef = useRef(onOpenLink);
   onChangeRef.current = onChange;
@@ -78,5 +84,10 @@ export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef }: Pro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docKey, editor]);
 
-  return <EditorContent editor={editor} />;
+  return (
+    <div className="editor-shell" ref={shell}>
+      <EditorContent editor={editor} />
+      {editor && <FormatBar editor={editor} />}
+    </div>
+  );
 }
