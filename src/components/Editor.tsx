@@ -2,6 +2,8 @@ import { useEffect, useRef } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import { baseExtensions } from "../editor/extensions";
+import { SlashCommand, slashItems } from "../editor/SlashCommand";
+import { StrandSuggest } from "../editor/StrandSuggest";
 import { FormatBar } from "./FormatBar";
 
 interface Props {
@@ -44,7 +46,9 @@ export function Editor({ docKey, markdown, onChange, onOpenLink, flushRef, notes
   const editor = useEditor({
     extensions: [
       ...baseExtensions(),
-      Placeholder.configure({ placeholder: "Start typing. Use [[ to tie this note to another one…" }),
+      Placeholder.configure({ placeholder: "Write something, or press / for blocks and [[ to tie in another note…" }),
+      SlashCommand.configure({ getItems: () => slashItems() }),
+      StrandSuggest.configure({ getNotes: () => notesRef.current }),
     ],
     content: markdown,
     editorProps: {
