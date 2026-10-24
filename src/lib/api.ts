@@ -41,6 +41,8 @@ export interface UpdateInfo {
 export interface Api {
   pickFolder(): Promise<string | null>;
   openVault(path: string): Promise<VaultInfo>;
+  /** Creates an empty vault folder (in Documents unless a parent is given) and returns its path. */
+  createVault(name: string, parent?: string): Promise<string>;
   listEntries(): Promise<Entry[]>;
   readNote(path: string): Promise<string>;
   writeNote(path: string, content: string): Promise<void>;
@@ -65,6 +67,7 @@ const tauriApi: Api = {
     return typeof picked === "string" ? picked : null;
   },
   openVault: (path) => invoke("open_vault", { path }),
+  createVault: (name, parent) => invoke("create_vault", { name, parent: parent ?? null }),
   listEntries: () => invoke("list_entries"),
   readNote: (path) => invoke("read_note", { path }),
   writeNote: (path, content) => invoke("write_note", { path, content }),
