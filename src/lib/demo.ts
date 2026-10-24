@@ -44,6 +44,7 @@ function entries(): Entry[] {
 export const demoApi: Api = {
   pickFolder: async () => "Demo vault",
   openVault: async () => ({ root: "Demo vault", entries: entries() }),
+  createVault: async () => "Demo vault",
   listEntries: async () => entries(),
   readNote: async (p) => files.get(p) ?? "",
   writeNote: async (p, c) => void files.set(p, c),
