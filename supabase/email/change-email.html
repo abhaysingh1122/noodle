@@ -4,40 +4,50 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
 <title>Confirm your new email</title>
 </head>
-<body style="margin:0;padding:0;background:#f3f8ec;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Confirm your new Noodle email address.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f8ec;background-image:linear-gradient(135deg,#ddefd4 0%,#fffbe6 55%,#fff3b0 100%);">
+<!-- Noodle email: "Olive grove" palette. Paste into Supabase → Authentication → Emails. -->
+<body style="margin:0;padding:0;background:#fbfcf3;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Confirm the new email address for your Noodle account.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbfcf3;background-image:linear-gradient(135deg,#e9ecd6 0%,#fbfcf3 55%,#f3ecc4 100%);">
   <tr>
     <td align="center" style="padding:40px 16px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#ffffff;border-radius:32px;box-shadow:0 12px 40px rgba(60,80,40,0.12);">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#ffffff;border-radius:32px;box-shadow:0 12px 40px rgba(60,80,40,0.12);border:1px solid rgba(46,51,38,0.08);">
         <tr>
-          <td style="height:120px;border-radius:32px 32px 0 0;background:#cdebc3;background-image:linear-gradient(120deg,#cdebc3 0%,#fff3b0 100%);" align="left" valign="bottom">
-            <!-- the bowl badge sits a little crooked, like in the app -->
-            <div style="margin:0 0 -44px 36px;width:88px;height:88px;border-radius:28px;background:#fff3b0;border:6px solid #ffffff;transform:rotate(-5deg);text-align:center;line-height:88px;">
-              <img src="https://raw.githubusercontent.com/abhaysingh1122/noodle/main/src-tauri/icons/128x128@2x.png" width="64" height="64" alt="Noodle" style="vertical-align:middle;border:0;border-radius:16px;">
-            </div>
+          <td style="height:124px;border-radius:32px 32px 0 0;background:#d9deb4;background-image:linear-gradient(120deg,#d9deb4 0%,#f6f0cc 100%);" valign="bottom">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td align="left" valign="bottom">
+                <!-- the bowl badge sits a little crooked, like in the app -->
+                <div style="margin:0 0 -44px 36px;width:88px;height:88px;border-radius:28px;background:#fff7d1;border:6px solid #ffffff;transform:rotate(-5deg);text-align:center;line-height:88px;">
+                  <img src="https://raw.githubusercontent.com/abhaysingh1122/noodle/main/src-tauri/icons/128x128@2x.png" width="64" height="64" alt="Noodle" style="vertical-align:middle;border:0;border-radius:16px;">
+                </div>
+              </td>
+              <td align="right" valign="top" style="padding:20px 26px 0 0;">
+                <div style="display:inline-block;width:52px;height:52px;line-height:52px;text-align:center;font-size:28px;border-radius:18px;background:rgba(255,255,255,0.75);transform:rotate(-12deg);">&#128236;</div>
+              </td>
+            </tr></table>
           </td>
         </tr>
         <tr>
-          <td style="padding:64px 40px 8px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2e3326;">
+          <td style="padding:62px 40px 8px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2e3326;">
+            <div style="display:inline-block;margin:0 0 12px 0;padding:5px 14px;border-radius:999px;background:#eef0dc;color:#55621f;font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">New address</div>
             <h1 style="margin:0 0 12px 0;font-size:30px;line-height:1.2;font-weight:900;letter-spacing:-0.01em;">Confirm your new email</h1>
-            <p style="margin:0 0 28px 0;font-size:16px;line-height:1.65;color:#5d6652;">Tap below to start using this address for your Noodle account.</p>
+            <p style="margin:0 0 26px 0;font-size:16px;line-height:1.65;color:#5d6652;">You asked to move your Noodle account from <b>{{ .Email }}</b> to <b>{{ .NewEmail }}</b>. Confirm it and future emails will go to the new address.</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td style="border-radius:999px;background:#7db46c;box-shadow:0 4px 0 #557e48;">
-                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:15px 30px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:800;color:#1f2a17;text-decoration:none;border-radius:999px;">Confirm new email &nbsp;&rarr;</a>
+                <td style="border-radius:999px;background:#8a9a3c;box-shadow:0 4px 0 #62702a;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:15px 30px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:800;color:#1f2a17;text-decoration:none;border-radius:999px;">Use my new email &nbsp;&rarr;</a>
                 </td>
               </tr>
             </table>
             <p style="margin:28px 0 0 0;font-size:13px;line-height:1.6;color:#7a8270;">Button not working? Paste this into your browser:<br>
-              <a href="{{ .ConfirmationURL }}" style="color:#4c7f3c;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+              <a href="{{ .ConfirmationURL }}" style="color:#5d6b22;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
           </td>
         </tr>
         <tr>
           <td style="padding:24px 40px 36px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-            <div style="border-top:2px dashed #e6ebdc;padding-top:18px;font-size:13px;line-height:1.6;color:#7a8270;">If you didn't ask to change your email, ignore this message.</div>
+            <div style="border-top:2px dashed #e6ebdc;padding-top:18px;font-size:13px;line-height:1.6;color:#7a8270;">If you didn't ask for this, ignore this email and your account keeps its current address.</div>
           </td>
         </tr>
       </table>
