@@ -88,6 +88,24 @@ export function cloudClient(): SupabaseClient {
 export type CloudLinks = Record<string, { id: string; name: string }>;
 export const readLinks = () => readJson<CloudLinks>(LINKS_KEY, {});
 
+/**
+ * One folder can be written more than one way: a phone's /data/user/0 is the
+ * same place as /data/data, and Windows sometimes adds a \\?\ in front.
+ */
+const folderKey = (path: string) =>
+  path
+    .replace(/^\\\\\?\\/, "")
+    .replace(/^\/data\/user\/0\//, "/data/data/")
+    .replace(/[\\/]+$/, "");
+export const sameFolder = (a: string, b: string) => folderKey(a) === folderKey(b);
+
+/** The cloud vault a folder syncs with, however its path is written. */
+export function linkOf(links: CloudLinks, folder: string) {
+  if (links[folder]) return links[folder];
+  const key = Object.keys(links).find((k) => sameFolder(k, folder));
+  return key ? links[key] : undefined;
+}
+
 /** The account's vaults in the cloud, most recently changed first. */
 export async function listCloudVaults(client: SupabaseClient): Promise<CloudVault[]> {
   const { data, error } = await client.from("vaults").select("id, name, updated_at").order("updated_at", { ascending: false });
@@ -280,6 +298,23 @@ export function useCloudSync(root: string | null, onRemoteChanges: (paths: strin
 
   const link = root ? links[root] : undefined;
   const linked = !!(session && link);
+
+  // A folder linked under another spelling of its path gets its link (and
+  // what it last synced) moved to the path it's open under now.
+  useEffect(() => {
+    if (!root || links[root]) return;
+    const old = Object.keys(links).find((k) => sameFolder(k, root));
+    if (!old) return;
+    const uid = session?.user.id;
+    const base = uid && localStorage.getItem(baseKey(uid, links[old].id, old));
+    if (uid && base) localStorage.setItem(baseKey(uid, links[old].id, root), base);
+    setLinks((prev) => {
+      const next = { ...prev, [root]: prev[old] };
+      delete next[old];
+      writeJson(LINKS_KEY, next);
+      return next;
+    });
+  }, [root, links, session]);
 
   useEffect(() => {
     client.auth.getSession().then(({ data }) => {
