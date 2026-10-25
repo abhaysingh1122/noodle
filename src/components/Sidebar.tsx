@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, FilePlus, FolderPlus, Search, Settings, Trash2, Pencil, FileText, Folder, Sparkles, Waypoints, GripVertical, Repeat } from "lucide-react";
 import type { Entry } from "../lib/api";
-import { noteName } from "../lib/api";
+import { isMobile, noteName } from "../lib/api";
 import { Logo } from "./Logo";
 
 interface TreeNode {
@@ -204,9 +204,11 @@ export function Sidebar(props: Props) {
           <span className="vault-name">{props.vaultName}</span>
           <Pencil size={13} className="vault-edit" />
         </button>
-        <button className="vault-swap" onClick={props.onSwitchVault} title="Open or start another vault">
-          <Repeat size={15} />
-        </button>
+        {!isMobile && (
+          <button className="vault-swap" onClick={props.onSwitchVault} title="Open or start another vault">
+            <Repeat size={15} />
+          </button>
+        )}
       </div>
       <nav className="sidebar-actions">
         <button onClick={props.onSearch}>
