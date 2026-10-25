@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, isDesktop, type UpdateInfo } from "./api";
+import { api, isDesktop, isMobile, type UpdateInfo } from "./api";
 
 export type UpdateState =
   | { kind: "idle" }
@@ -39,7 +39,8 @@ export function useUpdates() {
 
   useEffect(() => {
     api.appVersion().then(setVersion).catch(() => {});
-    if (!isDesktop) return;
+    // The phone app is updated by installing the new APK from the releases page.
+    if (!isDesktop || isMobile) return;
     // Quietly look for an update a few seconds after launch.
     const t = setTimeout(() => {
       api
