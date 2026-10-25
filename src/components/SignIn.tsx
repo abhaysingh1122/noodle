@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ArrowLeft, Cloud, Mail } from "lucide-react";
 import { CONFIRMED_PAGE } from "../lib/sync";
@@ -17,12 +17,51 @@ function friendly(message: string): string {
   return message;
 }
 
+/**
+ * Waiting for the confirmation link to be tapped. Each time Noodle comes back
+ * into view (after you've been to your inbox), it quietly tries to sign in,
+ * so confirming the email is all it takes.
+ */
+function VerifyWait({ client, email, password }: { client: SupabaseClient; email: string; password: string }) {
+  useEffect(() => {
+    let trying = false;
+    const attempt = async () => {
+      if (trying || document.visibilityState !== "visible" || !password) return;
+      trying = true;
+      await client.auth.signInWithPassword({ email, password }).catch(() => {});
+      trying = false;
+    };
+    // Also a slow check, for when the email was opened on another device.
+    const every = setInterval(attempt, 20_000);
+    window.addEventListener("focus", attempt);
+    document.addEventListener("visibilitychange", attempt);
+    return () => {
+      clearInterval(every);
+      window.removeEventListener("focus", attempt);
+      document.removeEventListener("visibilitychange", attempt);
+    };
+  }, [client, email, password]);
+
+  return (
+    <div className="verify-wait">
+      <span className="verify-envelope">
+        <Mail size={22} />
+      </span>
+      <p className="form-note">
+        We sent an email to <b>{email}</b>. Tap <b>Confirm my email</b> in it, then come back: Noodle signs you in by itself.
+      </p>
+    </div>
+  );
+}
+
 /** Email + password sign-in and sign-up for Noodle Cloud, with codes for confirming and resetting. */
 export function SignInForm({ client }: { client: SupabaseClient }) {
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
+  // The code box is only for emails that carry a code; most people just tap the link.
+  const [showCode, setShowCode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
   const address = email.trim();
@@ -43,6 +82,7 @@ export function SignInForm({ client }: { client: SupabaseClient }) {
   const go = (next: Mode, text?: string) => {
     setMode(next);
     setCode("");
+    setShowCode(false);
     setMessage(text ? { error: false, text } : null);
   };
 
@@ -57,20 +97,26 @@ export function SignInForm({ client }: { client: SupabaseClient }) {
   if (mode === "verify") {
     return (
       <>
+        <VerifyWait client={client} email={address} password={password} />
         <form
           className="account-form"
           onSubmit={(e) => {
             e.preventDefault();
             run(async () => {
-              const { error } = await client.auth.verifyOtp({ email: address, token: cleanCode(code), type: "signup" });
+              if (cleanCode(code).length >= 6) {
+                const { error } = await client.auth.verifyOtp({ email: address, token: cleanCode(code), type: "signup" });
+                if (error) throw error;
+                return;
+              }
+              const { error } = await client.auth.signInWithPassword({ email: address, password });
+              if (error && /not confirmed/i.test(error.message)) throw new Error("Not confirmed yet. Tap the button in the email first, then try again.");
               if (error) throw error;
             });
           }}
         >
-          <p className="form-note">
-            We sent a code to <b>{address}</b>. Type it here, or tap the button in the email.
-          </p>
-          <input className="code-input" inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+          {showCode && (
+            <input className="code-input" inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email" value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+          )}
           <div className="prompt-buttons">
             <button
               type="button"
@@ -80,18 +126,23 @@ export function SignInForm({ client }: { client: SupabaseClient }) {
                 run(async () => {
                   const { error } = await client.auth.resend({ type: "signup", email: address, options: { emailRedirectTo: CONFIRMED_PAGE } });
                   if (error) throw error;
-                  return `A new code is on its way to ${address}. Check spam too.`;
+                  return `A new email is on its way to ${address}. Check spam too.`;
                 })
               }
             >
-              <Mail size={14} /> Send a new code
+              <Mail size={14} /> Send it again
             </button>
-            <button type="submit" className="primary" disabled={busy || cleanCode(code).length < 6}>
-              Confirm
+            <button type="submit" className="primary" disabled={busy || (showCode && cleanCode(code).length > 0 && cleanCode(code).length < 6)}>
+              {showCode && cleanCode(code).length >= 6 ? "Confirm" : "I've confirmed"}
             </button>
           </div>
         </form>
         {feedback}
+        {!showCode && (
+          <button type="button" className="link-btn forgot" onClick={() => setShowCode(true)}>
+            Got a code in the email instead?
+          </button>
+        )}
         {back}
       </>
     );
@@ -168,7 +219,7 @@ export function SignInForm({ client }: { client: SupabaseClient }) {
             const { error } = await client.auth.signInWithPassword({ email: address, password });
             if (error && /not confirmed/i.test(error.message)) {
               await client.auth.resend({ type: "signup", email: address, options: { emailRedirectTo: CONFIRMED_PAGE } }).catch(() => {});
-              go("verify", "This email isn't confirmed yet, so we sent a fresh code.");
+              go("verify", "This email isn't confirmed yet, so we sent the confirmation email again.");
               return;
             }
             if (error) throw error;
