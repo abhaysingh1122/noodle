@@ -50,6 +50,14 @@ export const demoApi: Api = {
   importImage: async (source) => source,
   saveAttachment: async (name) => name,
   fileUrl: (_root, path) => path,
+  async syncSnapshot() {
+    const hex = async (text: string) =>
+      [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((b) => b.toString(16).padStart(2, "0")).join("");
+    const notes = await Promise.all([...files.entries()].map(async ([path, text]) => ({ path, kind: "note" as const, hash: await hex(text) })));
+    return [...notes, ...[...folders].map((path) => ({ path, kind: "folder" as const, hash: "" }))];
+  },
+  readBytes: async () => new Uint8Array(),
+  writeBytes: async () => {},
   listEntries: async () => entries(),
   readNote: async (p) => files.get(p) ?? "",
   writeNote: async (p, c) => void files.set(p, c),
