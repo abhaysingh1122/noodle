@@ -25,7 +25,7 @@ vi.mock("./api", () => ({
   },
 }));
 
-const { syncOnce } = await import("./sync");
+const { syncOnce, sameFolder, linkOf } = await import("./sync");
 
 type Row = { vault_id: string; path: string; kind: string; hash: string; content: string; deleted: boolean; device: string | null };
 
@@ -135,5 +135,15 @@ describe("cloud sync", () => {
     await syncOnce(cloud.client, "V", "v");
     const r = await syncOnce(cloud.client, "V", "v");
     expect(r).toEqual({ changed: [], pushed: 0, conflicts: [] });
+  });
+});
+
+describe("folder paths", () => {
+  it("treats different spellings of one folder as the same", () => {
+    expect(sameFolder("/data/user/0/app/Vaults/Notes", "/data/data/app/Vaults/Notes")).toBe(true);
+    expect(sameFolder("\\\\?\\C:\\Users\\me\\Notes", "C:\\Users\\me\\Notes")).toBe(true);
+    expect(sameFolder("/data/data/app/Vaults/Notes", "/data/data/app/Vaults/Notes 2")).toBe(false);
+    const links = { "/data/user/0/app/Vaults/Notes": { id: "v1", name: "Notes" } };
+    expect(linkOf(links, "/data/data/app/Vaults/Notes")?.id).toBe("v1");
   });
 });
