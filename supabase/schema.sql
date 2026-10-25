@@ -78,6 +78,14 @@ end $$;
 create or replace function public.keepalive() returns text language sql stable as $$ select 'ok'::text $$;
 grant execute on function public.keepalive() to anon, authenticated;
 
+-- Lets people delete their own account (and, through the cascades, all their vaults and notes).
+create or replace function public.delete_my_account() returns void
+language sql security definer set search_path = '' as $$
+  delete from auth.users where id = auth.uid();
+$$;
+revoke execute on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
+
 -- Pictures and other attachments, stored under <user id>/<vault id>/<hash>.
 insert into storage.buckets (id, name, public)
 values ('attachments', 'attachments', false)
