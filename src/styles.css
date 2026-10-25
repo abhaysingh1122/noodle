@@ -2351,3 +2351,8 @@ body.resizing {
 .manage-tabs button.danger:not(.on):hover {
   color: #b0452c;
 }
+.account-form .code-input::placeholder {
+  font-family: var(--font);
+  font-size: 15px;
+  letter-spacing: normal;
+}
