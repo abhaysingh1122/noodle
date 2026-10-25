@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Cloud, CloudDownload, CloudOff, FolderOpen, FolderPlus, HardDrive, LogIn, MoreHorizontal, Pencil, Sparkles, Trash2, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { isDesktop, isMobile } from "../lib/api";
-import type { CloudLinks, CloudVault } from "../lib/sync";
+import { linkOf, type CloudLinks, type CloudVault } from "../lib/sync";
 import type { VaultEntry } from "../lib/vaults";
 import { folderName } from "../lib/vaults";
 
@@ -41,7 +41,8 @@ function vaultRows(history: VaultEntry[], cloudVaults: CloudVault[] | null, link
   const cloudById = new Map((cloudVaults ?? []).map((v) => [v.id, v]));
   const seen = new Set<string>();
   for (const h of history) {
-    const cloud = links[h.path] ? (cloudById.get(links[h.path].id) ?? null) : null;
+    const link = linkOf(links, h.path);
+    const cloud = link ? (cloudById.get(link.id) ?? null) : null;
     if (cloud) seen.add(cloud.id);
     rows.push({ key: h.path, name: h.name, path: h.path, cloud, time: Math.max(h.openedAt, cloud ? Date.parse(cloud.updated_at) : 0) });
   }
