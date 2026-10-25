@@ -423,6 +423,11 @@ export default function App() {
             <Menu size={18} />
           </button>
           <span className="breadcrumb">{note ? note.path.replace(/\.md$/i, "").split("/").join("  /  ") : ""}</span>
+          {!cloud.linked && (
+            <button className="cloud-pill off" title="Sign in to sync with your other devices" onClick={() => setOverlay({ kind: "settings" })}>
+              <Cloud size={14} /> {cloud.session ? "Turn on sync" : "Sign in"}
+            </button>
+          )}
           {cloud.linked && (
             <button className={`cloud-pill ${cloud.status.kind}`} title={cloud.status.kind === "error" ? cloud.status.message : "Cloud sync (click to sync now)"} onClick={() => cloud.syncNow()}>
               <Cloud size={14} /> {cloud.status.kind === "syncing" ? "Syncing" : cloud.status.kind === "error" ? "Sync problem" : "Synced"}
@@ -460,7 +465,15 @@ export default function App() {
         ) : (
           <div className="empty-state">
             <Logo size={72} />
-            <p>Pick a note on the left, or press <kbd>Ctrl O</kbd> to jump to one.</p>
+            {isMobile ? (
+              <p>
+                Tap <Menu size={15} /> at the top to pick a note.
+              </p>
+            ) : (
+              <p>
+                Pick a note on the left, or press <kbd>Ctrl O</kbd> to jump to one.
+              </p>
+            )}
             <button className="primary" onClick={() => promptNewNote("")}>
               New note
             </button>
