@@ -2120,3 +2120,182 @@ body.resizing {
   padding: 0;
   accent-color: var(--accent);
 }
+
+/* Vault list on the welcome screen */
+.welcome-card.vaults-card {
+  max-width: 560px;
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 40px 36px;
+}
+.vaults-card h1 {
+  font-size: 44px;
+}
+.vault-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  margin-bottom: 8px;
+}
+.vault-list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px;
+  font-weight: 800;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.vault-list-head .muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.vault-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.vault-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px 10px 10px;
+  border-radius: 22px;
+  background: var(--bg);
+  text-align: left;
+  transition: transform 0.18s, box-shadow 0.18s;
+}
+.vault-open:hover {
+  /* rows lean a little, alternately, when you reach for them */
+  transform: rotate(var(--tilt)) translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.vault-icon {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.vault-icon.cloud {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  color: var(--text);
+}
+.vault-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.vault-text b {
+  font-size: 15.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-text small {
+  color: var(--muted);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.vault-time {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.vault-forget {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--muted);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.vault-row:hover .vault-forget,
+.mobile .vault-forget {
+  opacity: 1;
+}
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+/* Sign-in screen */
+.signin-card {
+  width: 100%;
+  max-width: 440px;
+}
+.signin-card h1 {
+  font-size: 40px;
+}
+.signin-card .account-form {
+  width: 100%;
+}
+.signin-card .skip {
+  margin-top: 6px;
+  font-size: 13.5px;
+}
+.inline-icon {
+  vertical-align: -2px;
+}
+
+/* "Keep this vault in the cloud?" */
+.cloud-offer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 18px 0;
+  padding: 10px 12px 10px 16px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  font-size: 14px;
+  transform: rotate(-0.4deg);
+}
+.cloud-offer span {
+  flex: 1;
+  min-width: 180px;
+}
+.mobile .welcome {
+  padding-top: max(env(safe-area-inset-top, 0px), 40px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 18px);
+}
+.signin-card .account-form input {
+  background: var(--bg);
+}
