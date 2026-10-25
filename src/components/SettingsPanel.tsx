@@ -9,6 +9,7 @@ import type { useUpdates } from "../lib/updates";
 import { PALETTES } from "../lib/theme";
 import { isMobile } from "../lib/api";
 import { Modal } from "./Modal";
+import { SignInForm } from "./SignIn";
 import { Logo } from "./Logo";
 
 function CopyButton({ text, label }: { text: string; label?: string }) {
@@ -138,62 +139,11 @@ function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) 
   );
 }
 
-/** Where the confirmation email sends people after they click it. */
-const CONFIRMED_PAGE = "https://abhaysingh1122.github.io/noodle/confirmed.html";
-
-/** Connect a Supabase project, sign in with email, and link this vault to it. */
+/** Noodle Cloud: the account, and whether the open vault syncs. */
 function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null }) {
-  const [url, setUrl] = useState(cloud.config?.url ?? "");
-  const [anonKey, setAnonKey] = useState(cloud.config?.anonKey ?? "");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
-  // Set when the email exists but hasn't been confirmed, so we can offer a fresh link.
-  const [unconfirmed, setUnconfirmed] = useState(false);
-  const vaultName = root?.split(/[\\/]/).filter(Boolean).pop();
-
-  const run = async (work: () => Promise<string | void>) => {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const done = await work();
-      if (done) setMessage({ error: false, text: done });
-    } catch (e) {
-      setMessage({ error: true, text: e instanceof Error ? e.message : String(e) });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!cloud.client) {
-    return (
-      <div className="api-box">
-        <div className="api-head">
-          <div>
-            <b>
-              <Cloud size={16} /> Noodle Cloud
-            </b>
-            <p className="muted">
-              Sync your notes between your computer and phone with an email login. Noodle uses your own free Supabase project: create one at supabase.com, run
-              the <code>supabase/schema.sql</code> file from Noodle's repository in its SQL editor, then paste the project's URL and anon public key here.
-            </p>
-          </div>
-        </div>
-        <div className="account-form">
-          <input placeholder="Project URL, like https://abcd.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} />
-          <input placeholder="anon public key" value={anonKey} onChange={(e) => setAnonKey(e.target.value)} />
-          <button
-            className="primary"
-            disabled={!/^https:\/\/.+/.test(url.trim()) || anonKey.trim().length < 20}
-            onClick={() => cloud.setConfig({ url: url.trim(), anonKey: anonKey.trim(), vault: null })}
-          >
-            Connect
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const [problem, setProblem] = useState<string | null>(null);
+  const vaultName = root?.split(/[\\/]/).filter(Boolean).pop() ?? "";
 
   if (!cloud.session) {
     return (
@@ -201,69 +151,8 @@ function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null
         <b>
           <Cloud size={16} /> Sign in to Noodle Cloud
         </b>
-        <form
-          className="account-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            run(async () => {
-              const { error } = await cloud.client!.auth.signInWithPassword({ email, password });
-              if (error && /not confirmed/i.test(error.message)) {
-                setUnconfirmed(true);
-                throw new Error("This email isn't confirmed yet. Tap \"Send a new link\" and open it on any device.");
-              }
-              if (error) throw new Error(/invalid login/i.test(error.message) ? "That email and password don't match." : error.message);
-            });
-          }}
-        >
-          <input type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input type="password" autoComplete="current-password" placeholder="Password (8+ characters)" value={password} onChange={(e) => setPassword(e.target.value)} />
-          <div className="prompt-buttons">
-            <button
-              type="button"
-              className="ghost"
-              disabled={busy || !email || password.length < 8}
-              onClick={() =>
-                run(async () => {
-                  const { data, error } = await cloud.client!.auth.signUp({ email, password, options: { emailRedirectTo: CONFIRMED_PAGE } });
-                  if (error) throw new Error(/already registered/i.test(error.message) ? "You already have an account. Just press Sign in." : error.message);
-                  // An address that's already taken comes back as a user with no identities, and no email goes out.
-                  if (data.user && data.user.identities?.length === 0) {
-                    setUnconfirmed(true);
-                    return "You already have an account with this email. Press Sign in. If it was never confirmed, tap \"Send a new link\".";
-                  }
-                  if (!data.session) {
-                    setUnconfirmed(true);
-                    return "Almost there! We sent a confirmation link to your inbox. Open it, then press Sign in here.";
-                  }
-                })
-              }
-            >
-              Create account
-            </button>
-            <button type="submit" className="primary" disabled={busy || !email || !password}>
-              Sign in
-            </button>
-          </div>
-        </form>
-        {message && <p className={message.error ? "error" : "api-live"}>{message.text}</p>}
-        {unconfirmed && (
-          <button
-            className="ghost small-btn"
-            disabled={busy || !email}
-            onClick={() =>
-              run(async () => {
-                const { error } = await cloud.client!.auth.resend({ type: "signup", email, options: { emailRedirectTo: CONFIRMED_PAGE } });
-                if (error) throw new Error(/rate|seconds/i.test(error.message) ? "Too many emails just now. Wait a minute and try again." : error.message);
-                return `A new link is on its way to ${email}. Check spam too.`;
-              })
-            }
-          >
-            Send a new link
-          </button>
-        )}
-        <button className="ghost small-btn" onClick={() => cloud.setConfig(null)}>
-          Use a different Supabase project
-        </button>
+        <p className="muted">Your vaults follow you to your phone and other computers.</p>
+        <SignInForm client={cloud.client} />
       </div>
     );
   }
@@ -277,36 +166,53 @@ function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null
             <Cloud size={16} /> Signed in as {cloud.session.user.email}
           </b>
           <p className="muted">
-            {cloud.linked
-              ? status.kind === "syncing"
-                ? "Syncing…"
-                : status.kind === "error"
-                  ? ""
+            {!root
+              ? ""
+              : cloud.linked
+                ? status.kind === "syncing"
+                  ? "Syncing…"
                   : status.kind === "idle" && status.at
-                    ? `“${vaultName}” is synced. Last sync ${status.at.toLocaleTimeString()}.`
-                    : `“${vaultName}” syncs with the cloud.`
-              : cloud.config?.vault
-                ? "Another vault is the synced one. Link this one instead to sync it."
-                : "Pick which vault to keep in the cloud."}
+                    ? `“${vaultName}” is in Noodle Cloud. Last sync ${status.at.toLocaleTimeString()}.`
+                    : `“${vaultName}” is in Noodle Cloud.`
+                : `“${vaultName}” is only on this device.`}
           </p>
         </div>
       </div>
       {status.kind === "error" && <p className="error">{status.message}</p>}
+      {problem && <p className="error">{problem}</p>}
       <div className="prompt-buttons account-actions">
-        <button className="ghost small-btn" onClick={() => cloud.client!.auth.signOut()}>
+        <button className="ghost small-btn" onClick={() => cloud.signOut()}>
           <LogOut size={14} /> Sign out
         </button>
-        {cloud.linked ? (
-          <button className="primary" disabled={status.kind === "syncing"} onClick={() => cloud.syncNow()}>
-            <RefreshCw size={15} className={status.kind === "syncing" ? "spin" : ""} /> Sync now
+        {root && cloud.linked && (
+          <button className="ghost small-btn" title="This copy stops syncing; the cloud copy stays" onClick={() => cloud.linkFolder(root, null)}>
+            Stop syncing here
           </button>
-        ) : (
-          root && (
-            <button className="primary" onClick={() => cloud.setConfig({ ...cloud.config!, vault: root })}>
-              <Cloud size={15} /> Sync “{vaultName}”
-            </button>
-          )
         )}
+        {root &&
+          (cloud.linked ? (
+            <button className="primary" disabled={status.kind === "syncing"} onClick={() => cloud.syncNow()}>
+              <RefreshCw size={15} className={status.kind === "syncing" ? "spin" : ""} /> Sync now
+            </button>
+          ) : (
+            <button
+              className="primary"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                setProblem(null);
+                try {
+                  await cloud.keepInCloud(root, vaultName);
+                } catch (e) {
+                  setProblem(e instanceof Error ? e.message : String(e));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <Cloud size={15} /> Keep “{vaultName}” in the cloud
+            </button>
+          ))}
       </div>
     </div>
   );
