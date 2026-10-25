@@ -109,8 +109,9 @@ jobs:
       - name: Build the APK
         run: |
           pnpm tauri android init --ci
-          # Put the Noodle bowl on the home screen instead of the default icon.
-          pnpm tauri icon src-tauri/icons/icon.png
+          # Put the Noodle bowl on the home screen instead of the default icon. This
+          # version has room around the bowl, since phones crop app icons into shapes.
+          pnpm tauri icon src-tauri/icons/android-icon.png
           pnpm tauri android build --apk --target aarch64 --debug --ci
       - name: Attach the APK to the release
         env:
