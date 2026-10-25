@@ -49,6 +49,8 @@ export interface Api {
   openVault(path: string): Promise<VaultInfo>;
   /** Creates an empty vault folder (in Documents unless a parent is given) and returns its path. */
   createVault(name: string, parent?: string): Promise<string>;
+  /** The phone app's built-in vault folder (created if needed). */
+  defaultVault(): Promise<string>;
   /** Renames the open vault's folder and returns it reopened. */
   renameVault(name: string): Promise<VaultInfo>;
   listEntries(): Promise<Entry[]>;
@@ -92,6 +94,7 @@ const tauriApi: Api = {
   openVault: (path) => invoke("open_vault", { path }),
   createVault: (name, parent) => invoke("create_vault", { name, parent: parent ?? null }),
   renameVault: (name) => invoke("rename_vault", { name }),
+  defaultVault: () => invoke("default_vault"),
   listEntries: () => invoke("list_entries"),
   readNote: (path) => invoke("read_note", { path }),
   writeNote: (path, content) => invoke("write_note", { path, content }),
@@ -127,8 +130,10 @@ const tauriApi: Api = {
   installUpdate: (url, size) => invoke("install_update", { url, size }),
 };
 
-/** True inside the desktop app; false when the UI runs in a plain browser. */
+/** True inside the app (computer or phone); false when the UI runs in a plain browser. */
 export const isDesktop = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+/** True in the phone app, where the vault lives inside the app's own storage. */
+export const isMobile = isDesktop && /Android|iPhone|iPad/i.test(navigator.userAgent);
 
 // In a plain browser (`pnpm dev`) there is no file system, so the UI runs
 // against an in-memory demo vault instead.
