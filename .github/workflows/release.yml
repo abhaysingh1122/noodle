@@ -88,14 +88,23 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
       - run: pnpm install --frozen-lockfile
       # Phones only accept an update signed with the same key as the installed
-      # app, so builds use the key saved in the ANDROID_KEYSTORE secret when there is one.
+      # app. The key is kept between builds (in the ANDROID_KEYSTORE secret if
+      # there is one, otherwise in the build cache) instead of a fresh one each time.
+      - name: Restore the signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: android-signing-key-v1
       - name: Use the saved signing key
         env:
           ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: |
+          mkdir -p ~/.android
           if [ -n "$ANDROID_KEYSTORE" ]; then
-            mkdir -p ~/.android
             echo "$ANDROID_KEYSTORE" | base64 -d > ~/.android/debug.keystore
+          elif [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android -keypass android \
+              -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Noodle,O=Noodle"
           fi
       - name: Build the APK
         run: |
