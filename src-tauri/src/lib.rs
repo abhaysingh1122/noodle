@@ -201,6 +201,8 @@ fn create_vault(app: AppHandle, name: String, parent: Option<String>) -> CmdResu
         n += 1;
     }
     std::fs::create_dir_all(&dir).map_err(|e| format!("Couldn't create {}: {e}", dir.display()))?;
+    // The same spelling of the path that opening the vault gives back.
+    let dir = dir.canonicalize().unwrap_or(dir);
     Ok(dir.to_string_lossy().into_owned())
 }
 
