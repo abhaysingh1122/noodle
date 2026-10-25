@@ -360,20 +360,20 @@ async fn check_update(app: AppHandle) -> CmdResult<updater::UpdateInfo> {
 /// the app. The installer reopens Noodle when it finishes.
 #[tauri::command]
 async fn install_update(app: AppHandle, url: String, size: u64) -> CmdResult<()> {
-    // Android installs apps itself: hand the new APK to the browser, which
-    // downloads it and offers to install it.
+    // Android installs apps itself: download the new APK, then open the
+    // system's "update this app?" screen for it.
     #[cfg(target_os = "android")]
     {
-        use tauri_plugin_opener::OpenerExt;
-        let _ = size;
-        if !url.starts_with("https://github.com/abhaysingh1122/noodle/releases/download/") {
-            return Err("Refusing to open an update from an unexpected address".into());
-        }
-        app.opener().open_url(url, None::<&str>).map_err(|e| e.to_string())
+        let path = app.path().app_cache_dir().map_err(|e| e.to_string())?.join("updates").join("noodle-update.apk");
+        let apk = tauri::async_runtime::spawn_blocking(move || updater::download(&url, size, path))
+            .await
+            .map_err(|e| e.to_string())??;
+        tauri_plugin_apk_install::install(&app, &apk)
     }
     #[cfg(not(target_os = "android"))]
     {
-        let installer = tauri::async_runtime::spawn_blocking(move || updater::download(&url, size))
+        let path = std::env::temp_dir().join("noodle-update-setup.exe");
+        let installer = tauri::async_runtime::spawn_blocking(move || updater::download(&url, size, path))
             .await
             .map_err(|e| e.to_string())??;
         updater::launch_installer(&installer)?;
@@ -387,6 +387,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_apk_install::init())
         .manage(AppState::default())
         .invoke_handler(tauri::generate_handler![
             open_vault,
