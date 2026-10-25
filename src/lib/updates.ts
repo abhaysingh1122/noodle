@@ -32,7 +32,7 @@ export function useUpdates() {
     setState({ kind: "installing", info });
     try {
       await api.installUpdate(info.installerUrl, info.installerSize);
-      // On the phone the browser takes over the download, so Noodle stays open.
+      // On the phone Android shows its own install screen, so Noodle stays open.
       if (isMobile) setState({ kind: "available", info });
     } catch (e) {
       setState({ kind: "error", message: String(e) });
