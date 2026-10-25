@@ -2391,3 +2391,69 @@ body.resizing {
     animation: none;
   }
 }
+
+/* Vault list: the ⋯ menu */
+.vault-row {
+  flex-wrap: wrap;
+}
+.vault-more {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  margin-left: 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--muted);
+}
+.vault-more:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+.vault-menu {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 40px 4px 12px;
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  transform: rotate(-0.5deg);
+}
+.vault-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-align: left;
+}
+.vault-menu button:hover {
+  background: var(--bg);
+}
+.vault-menu button.danger {
+  color: #b0452c;
+}
+.vault-menu p {
+  margin: 2px 12px 4px;
+}
+.vault-menu input {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  font-weight: 700;
+  outline: 2px solid var(--accent);
+}
+form.vault-menu {
+  flex-direction: row;
+  gap: 8px;
+}
+form.vault-menu input {
+  flex: 1;
+  min-width: 0;
+}
