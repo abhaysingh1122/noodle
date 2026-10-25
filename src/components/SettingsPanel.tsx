@@ -30,23 +30,35 @@ function CopyButton({ text, label }: { text: string; label?: string }) {
 
 /** Switch the local HTTP API on or off, and see how to call it. */
 function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) {
-  const { settings, state, update } = localApi;
+  const { settings, state, update, ip } = localApi;
   const [showKey, setShowKey] = useState(false);
   const base = `http://127.0.0.1:${settings.port}`;
+  const lanBase = settings.lan && ip ? `http://${ip}:${settings.port}` : null;
+  const auth = `Authorization: Bearer ${settings.key}`;
+  const curl = isMobile ? "curl" : "curl.exe";
   const examples = [
-    `curl.exe ${base}/v1/notes -H "Authorization: Bearer ${settings.key}"`,
-    `curl.exe ${base}/v1/notes/Welcome -H "Authorization: Bearer ${settings.key}"`,
-    `curl.exe -X PUT ${base}/v1/notes/Inbox --data-binary "# Inbox" -H "Authorization: Bearer ${settings.key}"`,
-    `curl.exe -X POST ${base}/v1/notes/Inbox/append --data-binary "- new idea" -H "Authorization: Bearer ${settings.key}"`,
-    `curl.exe "${base}/v1/search?q=noodle" -H "Authorization: Bearer ${settings.key}"`,
+    `${curl} ${base}/v1/notes -H "${auth}"`,
+    `${curl} ${base}/v1/notes/Welcome -H "${auth}"`,
+    `${curl} -X PUT ${base}/v1/notes/Inbox --data-binary "# Inbox" -H "${auth}"`,
+    `${curl} -X POST ${base}/v1/notes/Inbox/append --data-binary "- new idea" -H "${auth}"`,
+    `${curl} "${base}/v1/search?q=noodle" -H "${auth}"`,
   ];
+  const mcpUrl = `${lanBase ?? base}/mcp`;
+  const claudeCode = `claude mcp add --transport http noodle ${mcpUrl} --header "${auth}"`;
+  // The header goes through an env variable because some apps split arguments at spaces.
+  const claudeDesktop = JSON.stringify(
+    { mcpServers: { noodle: { command: "npx", args: ["-y", "mcp-remote", mcpUrl, "--allow-http", "--header", "Authorization:${AUTH_HEADER}"], env: { AUTH_HEADER: `Bearer ${settings.key}` } } } },
+    null,
+    2,
+  );
   return (
     <div className="api-box">
       <div className="api-head">
         <div>
           <b>Local API</b>
           <p className="muted">
-            Lets scripts and apps on this computer read and write your notes over HTTP. Only this computer can reach it, and every call needs your key.
+            Lets scripts, apps and AI assistants read and write your notes over HTTP. Every call needs your key.
+            {isMobile && " On the phone it works while Noodle is open."}
           </p>
         </div>
         <button className={`switch ${settings.enabled ? "on" : ""}`} role="switch" aria-checked={settings.enabled} onClick={() => update({ enabled: !settings.enabled })}>
@@ -54,7 +66,12 @@ function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) 
         </button>
       </div>
       {state.kind === "error" && <p className="error">{state.message}</p>}
-      {state.kind === "on" && <p className="api-live">Listening on {base}</p>}
+      {state.kind === "on" && (
+        <p className="api-live">
+          Listening on {base}
+          {lanBase && ` and ${lanBase}`}
+        </p>
+      )}
       <div className="api-grid">
         <label>Port</label>
         <input
@@ -81,20 +98,41 @@ function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) 
             <RefreshCw size={14} /> New key
           </button>
         </div>
+        <label>Wi-Fi</label>
+        <label className="check-row">
+          <input type="checkbox" checked={settings.lan} onChange={(e) => update({ lan: e.target.checked })} />
+          Let my other devices on this Wi-Fi connect {settings.lan && !ip && settings.enabled && <span className="muted">(no network found)</span>}
+        </label>
       </div>
       {settings.enabled && (
-        <details className="api-examples">
-          <summary>Try it with curl</summary>
-          {examples.map((ex) => (
-            <div key={ex} className="api-example">
-              <code>{ex}</code>
-              <CopyButton text={ex} />
+        <>
+          <details className="api-examples">
+            <summary>Connect Claude or another AI assistant</summary>
+            <p className="muted small">Noodle speaks MCP at {mcpUrl}. In Claude Code, run:</p>
+            <div className="api-example">
+              <code>{claudeCode}</code>
+              <CopyButton text={claudeCode} />
             </div>
-          ))}
-          <p className="muted small">
-            Endpoints: GET /v1/notes · GET, PUT, DELETE /v1/notes/&lt;path&gt; · POST /v1/notes/&lt;path&gt;/append · GET /v1/search?q= · GET /v1/backlinks/&lt;path&gt; · GET /v1/graph · GET /v1/health
-          </p>
-        </details>
+            <p className="muted small">For Claude Desktop, add this to its config file (Settings → Developer → Edit config), then restart it:</p>
+            <div className="api-example">
+              <code className="pre">{claudeDesktop}</code>
+              <CopyButton text={claudeDesktop} />
+            </div>
+            <p className="muted small">Tools: list_notes, read_note, write_note, append_to_note, search_notes, get_backlinks.</p>
+          </details>
+          <details className="api-examples">
+            <summary>Try it with curl</summary>
+            {examples.map((ex) => (
+              <div key={ex} className="api-example">
+                <code>{ex}</code>
+                <CopyButton text={ex} />
+              </div>
+            ))}
+            <p className="muted small">
+              Endpoints: GET /v1/notes · GET, PUT, DELETE /v1/notes/&lt;path&gt; · POST /v1/notes/&lt;path&gt;/append · GET /v1/search?q= · GET /v1/backlinks/&lt;path&gt; · GET /v1/graph · GET /v1/health · POST /mcp
+            </p>
+          </details>
+        </>
       )}
     </div>
   );
