@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Your sign-in link</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f8ec;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Sign in to Noodle with one tap.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f8ec;background-image:linear-gradient(135deg,#ddefd4 0%,#fffbe6 55%,#fff3b0 100%);">
+  <tr>
+    <td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#ffffff;border-radius:32px;box-shadow:0 12px 40px rgba(60,80,40,0.12);">
+        <tr>
+          <td style="height:120px;border-radius:32px 32px 0 0;background:#cdebc3;background-image:linear-gradient(120deg,#cdebc3 0%,#fff3b0 100%);" align="left" valign="bottom">
+            <!-- the bowl badge sits a little crooked, like in the app -->
+            <div style="margin:0 0 -44px 36px;width:88px;height:88px;border-radius:28px;background:#fff3b0;border:6px solid #ffffff;transform:rotate(-5deg);text-align:center;line-height:88px;">
+              <img src="https://raw.githubusercontent.com/abhaysingh1122/noodle/main/src-tauri/icons/128x128@2x.png" width="64" height="64" alt="Noodle" style="vertical-align:middle;border:0;border-radius:16px;">
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:64px 40px 8px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2e3326;">
+            <h1 style="margin:0 0 12px 0;font-size:30px;line-height:1.2;font-weight:900;letter-spacing:-0.01em;">Your sign-in link</h1>
+            <p style="margin:0 0 28px 0;font-size:16px;line-height:1.65;color:#5d6652;">Tap the button to sign in to Noodle. The link works once and expires soon.</p>
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="border-radius:999px;background:#7db46c;box-shadow:0 4px 0 #557e48;">
+                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:15px 30px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:800;color:#1f2a17;text-decoration:none;border-radius:999px;">Sign me in &nbsp;&rarr;</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:28px 0 0 0;font-size:13px;line-height:1.6;color:#7a8270;">Button not working? Paste this into your browser:<br>
+              <a href="{{ .ConfirmationURL }}" style="color:#4c7f3c;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 40px 36px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <div style="border-top:2px dashed #e6ebdc;padding-top:18px;font-size:13px;line-height:1.6;color:#7a8270;">Didn't ask to sign in? You can safely ignore this email.</div>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:20px 0 0 0;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#8c9480;">&#127836; Noodle &middot; every note is a strand</p>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
