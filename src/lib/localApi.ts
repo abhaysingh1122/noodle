@@ -8,6 +8,8 @@ export interface ApiSettings {
   enabled: boolean;
   port: number;
   key: string;
+  /** Also reachable from other devices on the same Wi-Fi. */
+  lan: boolean;
 }
 
 export function newApiKey(): string {
@@ -19,11 +21,11 @@ export function newApiKey(): string {
 function load(): ApiSettings {
   try {
     const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as Partial<ApiSettings> | null;
-    if (saved?.key) return { enabled: !!saved.enabled, port: saved.port ?? DEFAULT_PORT, key: saved.key };
+    if (saved?.key) return { enabled: !!saved.enabled, port: saved.port ?? DEFAULT_PORT, key: saved.key, lan: !!saved.lan };
   } catch {
     // fall through to fresh settings
   }
-  return { enabled: false, port: DEFAULT_PORT, key: newApiKey() };
+  return { enabled: false, port: DEFAULT_PORT, key: newApiKey(), lan: false };
 }
 
 export type ApiState = { kind: "off" } | { kind: "on"; port: number } | { kind: "error"; message: string };
@@ -32,6 +34,7 @@ export type ApiState = { kind: "off" } | { kind: "on"; port: number } | { kind: 
 export function useLocalApi() {
   const [settings, setSettings] = useState<ApiSettings>(load);
   const [state, setState] = useState<ApiState>({ kind: "off" });
+  const [ip, setIp] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -44,11 +47,15 @@ export function useLocalApi() {
       return;
     }
     api
-      .configureApi(settings.enabled, settings.port, settings.key)
+      .configureApi(settings.enabled, settings.port, settings.key, settings.lan)
       .then((port) => setState(port ? { kind: "on", port } : { kind: "off" }))
       .catch((e) => setState({ kind: "error", message: String(e) }));
   }, [settings]);
 
+  useEffect(() => {
+    if (settings.enabled && settings.lan) api.localIp().then(setIp, () => setIp(null));
+  }, [settings.enabled, settings.lan]);
+
   const update = useCallback((patch: Partial<ApiSettings>) => setSettings((s) => ({ ...s, ...patch })), []);
-  return { settings, state, update };
+  return { settings, state, update, ip };
 }
