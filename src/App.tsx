@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Backlink, Entry } from "./lib/api";
-import { api, isDesktop, parentDir } from "./lib/api";
+import { api, isDesktop, isMobile, parentDir } from "./lib/api";
 import { joinFrontmatter, setField, splitFrontmatter } from "./lib/frontmatter";
 import { applyTheme, loadTheme, saveTheme, type ThemeSettings } from "./lib/theme";
 import { Sidebar } from "./components/Sidebar";
@@ -16,7 +16,7 @@ import { useUpdates } from "./lib/updates";
 import { setMediaResolver } from "./lib/media";
 import { useLocalApi } from "./lib/localApi";
 import { useCloudSync } from "./lib/sync";
-import { Cloud } from "lucide-react";
+import { Cloud, Menu } from "lucide-react";
 
 const RECENT_KEY = "noodle.lastVault";
 /** The note that was open last in each vault, so reopening lands on it again. */
@@ -62,7 +62,9 @@ export default function App() {
   rootRef.current = root;
   // On the desktop, the last vault reopens by itself; the welcome screen
   // only shows while that is happening or if it fails.
-  const [starting, setStarting] = useState(() => isDesktop && !!readRecent());
+  const [starting, setStarting] = useState(() => isDesktop && (isMobile || !!readRecent()));
+  // On narrow screens (phones) the sidebar slides in as a drawer.
+  const [drawer, setDrawer] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
   const [note, setNote] = useState<OpenNote | null>(null);
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
@@ -127,6 +129,7 @@ export default function App() {
   const openPath = useCallback(
     async (path: string) => {
       setShowGraph(false);
+      setDrawer(false);
       if (noteRef.current?.path === path) return setOverlay(null);
       await flushSave();
       try {
@@ -170,7 +173,8 @@ export default function App() {
 
   useEffect(() => {
     const recent = readRecent();
-    if (isDesktop && recent) openVault(recent);
+    if (isMobile) api.defaultVault().then(openVault, (e) => (setError(String(e)), setStarting(false)));
+    else if (isDesktop && recent) openVault(recent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -383,7 +387,8 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app ${drawer ? "drawer-open" : ""}`}>
+      {drawer && <div className="drawer-shade" onClick={() => setDrawer(false)} />}
       <Sidebar
         vaultName={root.split(/[\\/]/).filter(Boolean).pop() ?? root}
         entries={entries}
@@ -414,6 +419,9 @@ export default function App() {
       />
       <main className="main">
         <header className="topbar">
+          <button className="drawer-button" title="Notes" onClick={() => setDrawer(true)}>
+            <Menu size={18} />
+          </button>
           <span className="breadcrumb">{note ? note.path.replace(/\.md$/i, "").split("/").join("  /  ") : ""}</span>
           {cloud.linked && (
             <button className={`cloud-pill ${cloud.status.kind}`} title={cloud.status.kind === "error" ? cloud.status.message : "Cloud sync (click to sync now)"} onClick={() => cloud.syncNow()}>
