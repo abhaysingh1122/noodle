@@ -182,12 +182,14 @@ fn rename_vault(app: AppHandle, state: State<AppState>, name: String) -> CmdResu
     open_vault(app, state, dst.to_string_lossy().into_owned())
 }
 
-/// Makes a new, empty vault folder: inside `parent` when given, otherwise in
-/// the user's Documents folder. Picks "Name 2", "Name 3"… if the name is taken.
+/// Makes a new, empty vault folder: inside `parent` when given, otherwise in the user's
+/// Documents (on phones, the app's own storage). Picks "Name 2", "Name 3"… if the name is taken.
 #[tauri::command]
 fn create_vault(app: AppHandle, name: String, parent: Option<String>) -> CmdResult<String> {
     let parent = match parent {
         Some(p) => std::path::PathBuf::from(p),
+        // Phones keep vaults inside the app's own storage.
+        None if cfg!(mobile) => app.path().app_data_dir().map_err(|e| e.to_string())?.join("Vaults"),
         None => app.path().document_dir().or_else(|_| app.path().home_dir()).map_err(|e| e.to_string())?,
     };
     let clean: String = name.trim().chars().filter(|c| !r#"\/:*?"<>|"#.contains(*c)).collect();
