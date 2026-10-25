@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Cloud, CloudDownload, FolderOpen, FolderPlus, HardDrive, LogIn, Sparkles, X } from "lucide-react";
+import { Cloud, CloudDownload, CloudOff, FolderOpen, FolderPlus, HardDrive, LogIn, MoreHorizontal, Pencil, Sparkles, Trash2, X } from "lucide-react";
 import { Logo } from "./Logo";
 import { isDesktop, isMobile } from "../lib/api";
 import type { CloudLinks, CloudVault } from "../lib/sync";
@@ -17,6 +17,10 @@ interface Props {
   onOpen(path: string): void;
   onOpenCloud(vault: CloudVault): void;
   onForget(path: string): void;
+  /** This device's folder stops syncing (the cloud copy stays). */
+  onUnlink(path: string): void;
+  onRenameCloud(id: string, name: string): void;
+  onDeleteCloud(id: string): void;
   onSignIn(): void;
   /** Creates a new empty vault; `chooseParent` asks where to put it first. */
   onCreate(name: string, chooseParent: boolean): void;
@@ -59,9 +63,69 @@ function ago(time: number): string {
   return new Date(time).toLocaleDateString();
 }
 
+/** What you can do with one vault in the list. */
+function VaultMenu(props: {
+  row: Row;
+  inHistory: boolean;
+  onClose(): void;
+  onForget(path: string): void;
+  onUnlink(path: string): void;
+  onRenameCloud(id: string, name: string): void;
+  onDeleteCloud(id: string): void;
+}) {
+  const { row } = props;
+  const [renaming, setRenaming] = useState(false);
+  const [newName, setNewName] = useState(row.name);
+  const [sure, setSure] = useState(false);
+  const done = (f: () => void) => () => (f(), props.onClose());
+
+  if (renaming && row.cloud) {
+    return (
+      <form
+        className="vault-menu"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (newName.trim()) done(() => props.onRenameCloud(row.cloud!.id, newName.trim()))();
+        }}
+      >
+        <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)} onFocus={(e) => e.target.select()} />
+        <button type="submit" className="primary small-btn">
+          Rename
+        </button>
+      </form>
+    );
+  }
+  return (
+    <div className="vault-menu">
+      {row.cloud && (
+        <button onClick={() => setRenaming(true)}>
+          <Pencil size={14} /> Rename in the cloud
+        </button>
+      )}
+      {row.path && row.cloud && (
+        <button onClick={done(() => props.onUnlink(row.path!))}>
+          <CloudOff size={14} /> Stop syncing on this device
+        </button>
+      )}
+      {props.inHistory && (
+        <button onClick={done(() => props.onForget(row.path!))}>
+          <X size={14} /> Remove from this list
+        </button>
+      )}
+      {row.cloud && (
+        <button className="danger" onClick={sure ? done(() => props.onDeleteCloud(row.cloud!.id)) : () => setSure(true)}>
+          <Trash2 size={14} /> {sure ? "Tap again: delete it from the cloud for good" : "Delete from Noodle Cloud"}
+        </button>
+      )}
+      {row.cloud && <p className="muted small">Deleting from the cloud keeps the folders already on your devices.</p>}
+    </div>
+  );
+}
+
 export function Welcome(props: Props) {
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState("My notes");
+  const [menu, setMenu] = useState<string | null>(null);
   const rows = vaultRows(props.history, props.cloudVaults, props.links);
 
   return (
@@ -100,10 +164,19 @@ export function Welcome(props: Props) {
                   </span>
                   <span className="vault-time">{ago(r.time)}</span>
                 </button>
-                {r.path && props.history.some((h) => h.path === r.path) && (
-                  <button className="vault-forget" title="Remove from this list (the folder stays)" onClick={() => props.onForget(r.path!)}>
-                    <X size={14} />
-                  </button>
+                <button className="vault-more" title="More" onClick={() => setMenu(menu === r.key ? null : r.key)}>
+                  <MoreHorizontal size={16} />
+                </button>
+                {menu === r.key && (
+                  <VaultMenu
+                    row={r}
+                    inHistory={!!r.path && props.history.some((h) => h.path === r.path)}
+                    onClose={() => setMenu(null)}
+                    onForget={props.onForget}
+                    onUnlink={props.onUnlink}
+                    onRenameCloud={props.onRenameCloud}
+                    onDeleteCloud={props.onDeleteCloud}
+                  />
                 )}
               </div>
             ))}
