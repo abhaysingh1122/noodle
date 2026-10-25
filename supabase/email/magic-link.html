@@ -4,40 +4,50 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>Your sign-in link</title>
+<meta name="supported-color-schemes" content="light">
+<title>Hop back into your notes</title>
 </head>
-<body style="margin:0;padding:0;background:#f3f8ec;">
-<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Sign in to Noodle with one tap.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f8ec;background-image:linear-gradient(135deg,#ddefd4 0%,#fffbe6 55%,#fff3b0 100%);">
+<!-- Noodle email: "Mint & honey" palette. Paste into Supabase → Authentication → Emails. -->
+<body style="margin:0;padding:0;background:#fbfff9;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your one-tap sign-in link for Noodle.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fbfff9;background-image:linear-gradient(135deg,#d6f2ea 0%,#fbfff9 55%,#fde9b8 100%);">
   <tr>
     <td align="center" style="padding:40px 16px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#ffffff;border-radius:32px;box-shadow:0 12px 40px rgba(60,80,40,0.12);">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#ffffff;border-radius:32px;box-shadow:0 12px 40px rgba(60,80,40,0.12);border:1px solid rgba(46,51,38,0.08);">
         <tr>
-          <td style="height:120px;border-radius:32px 32px 0 0;background:#cdebc3;background-image:linear-gradient(120deg,#cdebc3 0%,#fff3b0 100%);" align="left" valign="bottom">
-            <!-- the bowl badge sits a little crooked, like in the app -->
-            <div style="margin:0 0 -44px 36px;width:88px;height:88px;border-radius:28px;background:#fff3b0;border:6px solid #ffffff;transform:rotate(-5deg);text-align:center;line-height:88px;">
-              <img src="https://raw.githubusercontent.com/abhaysingh1122/noodle/main/src-tauri/icons/128x128@2x.png" width="64" height="64" alt="Noodle" style="vertical-align:middle;border:0;border-radius:16px;">
-            </div>
+          <td style="height:124px;border-radius:32px 32px 0 0;background:#bfe9dc;background-image:linear-gradient(120deg,#bfe9dc 0%,#fde9b8 100%);" valign="bottom">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td align="left" valign="bottom">
+                <!-- the bowl badge sits a little crooked, like in the app -->
+                <div style="margin:0 0 -44px 36px;width:88px;height:88px;border-radius:28px;background:#fff7d1;border:6px solid #ffffff;transform:rotate(-5deg);text-align:center;line-height:88px;">
+                  <img src="https://raw.githubusercontent.com/abhaysingh1122/noodle/main/src-tauri/icons/128x128@2x.png" width="64" height="64" alt="Noodle" style="vertical-align:middle;border:0;border-radius:16px;">
+                </div>
+              </td>
+              <td align="right" valign="top" style="padding:20px 26px 0 0;">
+                <div style="display:inline-block;width:52px;height:52px;line-height:52px;text-align:center;font-size:28px;border-radius:18px;background:rgba(255,255,255,0.75);transform:rotate(-10deg);">&#10024;</div>
+              </td>
+            </tr></table>
           </td>
         </tr>
         <tr>
-          <td style="padding:64px 40px 8px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2e3326;">
-            <h1 style="margin:0 0 12px 0;font-size:30px;line-height:1.2;font-weight:900;letter-spacing:-0.01em;">Your sign-in link</h1>
-            <p style="margin:0 0 28px 0;font-size:16px;line-height:1.65;color:#5d6652;">Tap the button to sign in to Noodle. The link works once and expires soon.</p>
+          <td style="padding:62px 40px 8px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2e3326;">
+            <div style="display:inline-block;margin:0 0 12px 0;padding:5px 14px;border-radius:999px;background:#dff4ee;color:#2a6e59;font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">Sign-in link</div>
+            <h1 style="margin:0 0 12px 0;font-size:30px;line-height:1.2;font-weight:900;letter-spacing:-0.01em;">Hop back into your notes</h1>
+            <p style="margin:0 0 26px 0;font-size:16px;line-height:1.65;color:#5d6652;">Here's your sign-in link. Tap it on the device you want to use and you'll be straight back in, no password needed.</p>
             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td style="border-radius:999px;background:#7db46c;box-shadow:0 4px 0 #557e48;">
+                <td style="border-radius:999px;background:#5bbf9f;box-shadow:0 4px 0 #3e8b72;">
                   <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:15px 30px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:800;color:#1f2a17;text-decoration:none;border-radius:999px;">Sign me in &nbsp;&rarr;</a>
                 </td>
               </tr>
             </table>
             <p style="margin:28px 0 0 0;font-size:13px;line-height:1.6;color:#7a8270;">Button not working? Paste this into your browser:<br>
-              <a href="{{ .ConfirmationURL }}" style="color:#4c7f3c;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+              <a href="{{ .ConfirmationURL }}" style="color:#2f7f66;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
           </td>
         </tr>
         <tr>
           <td style="padding:24px 40px 36px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-            <div style="border-top:2px dashed #e6ebdc;padding-top:18px;font-size:13px;line-height:1.6;color:#7a8270;">Didn't ask to sign in? You can safely ignore this email.</div>
+            <div style="border-top:2px dashed #e6ebdc;padding-top:18px;font-size:13px;line-height:1.6;color:#7a8270;">This link works once and expires soon. If you didn't ask to sign in, you can safely ignore this email.</div>
           </td>
         </tr>
       </table>
