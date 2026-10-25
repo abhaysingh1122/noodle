@@ -26,12 +26,14 @@ export function useUpdates() {
 
   const install = useCallback(async (info: UpdateInfo) => {
     if (!info.installerUrl) {
-      setState({ kind: "error", message: "This release has no Windows installer yet." });
+      setState({ kind: "error", message: isMobile ? "This release has no phone app yet." : "This release has no Windows installer yet." });
       return;
     }
     setState({ kind: "installing", info });
     try {
       await api.installUpdate(info.installerUrl, info.installerSize);
+      // On the phone the browser takes over the download, so Noodle stays open.
+      if (isMobile) setState({ kind: "available", info });
     } catch (e) {
       setState({ kind: "error", message: String(e) });
     }
@@ -39,8 +41,7 @@ export function useUpdates() {
 
   useEffect(() => {
     api.appVersion().then(setVersion).catch(() => {});
-    // The phone app is updated by installing the new APK from the releases page.
-    if (!isDesktop || isMobile) return;
+    if (!isDesktop) return;
     // Quietly look for an update a few seconds after launch.
     const t = setTimeout(() => {
       api
