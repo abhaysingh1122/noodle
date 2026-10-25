@@ -305,8 +305,9 @@ fn graph(state: State<AppState>) -> CmdResult<Graph> {
 }
 
 /// Starts, restarts or stops the local HTTP API. Returns the port it listens on.
+/// `lan` lets other devices on the same Wi-Fi reach it too.
 #[tauri::command]
-fn configure_api(app: AppHandle, state: State<AppState>, enabled: bool, port: u16, key: String) -> CmdResult<Option<u16>> {
+fn configure_api(app: AppHandle, state: State<AppState>, enabled: bool, port: u16, key: String, lan: bool) -> CmdResult<Option<u16>> {
     let mut slot = state.api.lock().map_err(|e| e.to_string())?;
     if let Some(old) = slot.take() {
         old.stop();
@@ -317,7 +318,7 @@ fn configure_api(app: AppHandle, state: State<AppState>, enabled: bool, port: u1
     // The old listener may take a moment to let go of the port.
     let mut attempt = 0;
     let server = loop {
-        match http_api::start(AppAccess(app.clone()), port, key.clone()) {
+        match http_api::start(AppAccess(app.clone()), port, key.clone(), lan) {
             Ok(server) => break server,
             Err(e) if attempt >= 10 => return Err(e),
             Err(_) => {
@@ -329,6 +330,15 @@ fn configure_api(app: AppHandle, state: State<AppState>, enabled: bool, port: u1
     let port = server.port;
     *slot = Some(server);
     Ok(Some(port))
+}
+
+/// This device's address on the local network, for reaching the API from another device.
+#[tauri::command]
+fn local_ip() -> Option<String> {
+    // Connecting a UDP socket sends nothing; it just picks the outgoing interface.
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    Some(socket.local_addr().ok()?.ip().to_string())
 }
 
 #[tauri::command]
@@ -398,6 +408,7 @@ pub fn run() {
             search,
             graph,
             configure_api,
+            local_ip,
             app_version,
             check_update,
             install_update
