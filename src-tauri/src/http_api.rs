@@ -1,8 +1,12 @@
 //! A small local HTTP API, so scripts and other apps on this computer can
 //! read and write notes (curl, automations, your own tools).
 //!
-//! It is off until switched on in Settings, listens on 127.0.0.1 only, and
-//! every request except `/v1/health` needs `Authorization: Bearer <key>`.
+//! It is off until switched on in Settings, listens on 127.0.0.1 (or, if
+//! asked, on the Wi-Fi network too), and every request except `/v1/health`
+//! needs `Authorization: Bearer <key>`.
+//!
+//! `/mcp` speaks the Model Context Protocol (JSON-RPC over HTTP), so AI
+//! assistants can use the vault as a set of tools.
 
 use crate::vault::Vault;
 use serde::Serialize;
@@ -31,11 +35,13 @@ pub trait VaultAccess: Send + Sync + 'static {
 /// Max size of a note body sent to the API.
 const MAX_BODY: u64 = 20 * 1024 * 1024;
 
-pub fn start<A: VaultAccess>(access: A, port: u16, key: String) -> Result<ApiServer, String> {
+/// `lan` also accepts connections from other devices on the same network.
+pub fn start<A: VaultAccess>(access: A, port: u16, key: String, lan: bool) -> Result<ApiServer, String> {
     if key.trim().len() < 16 {
         return Err("The API key is too short".into());
     }
-    let server = Arc::new(Server::http(("127.0.0.1", port)).map_err(|e| format!("Couldn't start the API on port {port}: {e}"))?);
+    let host = if lan { "0.0.0.0" } else { "127.0.0.1" };
+    let server = Arc::new(Server::http((host, port)).map_err(|e| format!("Couldn't start the API on port {port}: {e}"))?);
     let worker = server.clone();
     let access = Arc::new(access);
     std::thread::spawn(move || {
@@ -182,6 +188,15 @@ fn route<A: VaultAccess>(access: &A, method: &Method, path: &str, query: &str, r
             Ok(json(200, &hits))
         }
         (Method::Get, "/v1/graph") => Ok(json(200, &access.with_vault(|v| Ok(v.graph())).map_err(fail(503))?)),
+        (Method::Post, "/mcp") => {
+            let body = read_body(request).map_err(fail(400))?;
+            Ok(match mcp::handle(access, &body) {
+                Some(reply) => json(200, &reply),
+                // Notifications get no answer.
+                None => with_common(Response::from_data(Vec::new()).with_status_code(202)),
+            })
+        }
+        (_, "/mcp") => Err((405, "The MCP endpoint takes JSON-RPC messages by POST".into())),
         (Method::Get, p) if p.starts_with("/v1/backlinks/") => {
             let rel = note_path(&p["/v1/backlinks/".len()..]);
             Ok(json(200, &access.with_vault(|v| Ok(v.backlinks(&rel))).map_err(fail(503))?))
@@ -225,6 +240,103 @@ fn route<A: VaultAccess>(access: &A, method: &Method, path: &str, query: &str, r
     }
 }
 
+/// The Model Context Protocol endpoint: the vault as tools for AI assistants.
+mod mcp {
+    use super::{note_path, VaultAccess};
+    use serde_json::{json, Value};
+
+    const PROTOCOL: &str = "2025-03-26";
+
+    fn tools() -> Value {
+        let path = json!({ "type": "string", "description": "Note path inside the vault, like \"Ideas/Plan\" (.md optional)" });
+        json!([
+            { "name": "list_notes", "description": "List every note and folder in the Noodle vault.", "inputSchema": { "type": "object", "properties": {} } },
+            { "name": "read_note", "description": "Read a note's Markdown.", "inputSchema": { "type": "object", "properties": { "path": path }, "required": ["path"] } },
+            { "name": "write_note", "description": "Create a note, or replace its whole Markdown.", "inputSchema": { "type": "object", "properties": { "path": path, "content": { "type": "string" } }, "required": ["path", "content"] } },
+            { "name": "append_to_note", "description": "Add Markdown to the end of a note (creates it if missing).", "inputSchema": { "type": "object", "properties": { "path": path, "text": { "type": "string" } }, "required": ["path", "text"] } },
+            { "name": "search_notes", "description": "Full-text search across the vault.", "inputSchema": { "type": "object", "properties": { "query": { "type": "string" } }, "required": ["query"] } },
+            { "name": "get_backlinks", "description": "Notes that link to this note with [[strands]].", "inputSchema": { "type": "object", "properties": { "path": path }, "required": ["path"] } }
+        ])
+    }
+
+    fn arg<'a>(args: &'a Value, name: &str) -> Result<&'a str, String> {
+        args.get(name).and_then(Value::as_str).ok_or_else(|| format!("Missing \"{name}\""))
+    }
+
+    fn pretty<T: serde::Serialize>(v: &T) -> String {
+        serde_json::to_string_pretty(v).unwrap_or_default()
+    }
+
+    fn call<A: VaultAccess>(access: &A, name: &str, args: &Value) -> Result<String, String> {
+        match name {
+            "list_notes" => access.with_vault(|v| Ok(pretty(&v.entries()))),
+            "read_note" => {
+                let rel = note_path(arg(args, "path")?);
+                access.with_vault(|v| v.read(&rel)).map_err(|_| format!("No note at {rel}"))
+            }
+            "write_note" => {
+                let rel = note_path(arg(args, "path")?);
+                let content = arg(args, "content")?;
+                access.with_vault(|v| v.write(&rel, content))?;
+                Ok(format!("Saved {rel}"))
+            }
+            "append_to_note" => {
+                let rel = note_path(arg(args, "path")?);
+                let text = arg(args, "text")?;
+                access.with_vault(|v| {
+                    let current = v.read(&rel).unwrap_or_default();
+                    let sep = if current.is_empty() || current.ends_with('\n') { "" } else { "\n" };
+                    v.write(&rel, &format!("{current}{sep}{text}"))
+                })?;
+                Ok(format!("Added to {rel}"))
+            }
+            "search_notes" => {
+                let q = arg(args, "query")?;
+                access.with_vault(|v| Ok(pretty(&v.search(q, 50))))
+            }
+            "get_backlinks" => {
+                let rel = note_path(arg(args, "path")?);
+                access.with_vault(|v| Ok(pretty(&v.backlinks(&rel))))
+            }
+            _ => Err(format!("Unknown tool {name}")),
+        }
+    }
+
+    /// Answers one JSON-RPC message; `None` for notifications.
+    pub fn handle<A: VaultAccess>(access: &A, body: &str) -> Option<Value> {
+        let msg: Value = match serde_json::from_str(body) {
+            Ok(v) => v,
+            Err(e) => return Some(json!({ "jsonrpc": "2.0", "id": null, "error": { "code": -32700, "message": format!("Not JSON: {e}") } })),
+        };
+        let id = msg.get("id").cloned()?;
+        let method = msg.get("method").and_then(Value::as_str).unwrap_or("");
+        let params = msg.get("params").cloned().unwrap_or(Value::Null);
+        let result = match method {
+            "initialize" => Ok(json!({
+                "protocolVersion": params.get("protocolVersion").and_then(Value::as_str).unwrap_or(PROTOCOL),
+                "capabilities": { "tools": {} },
+                "serverInfo": { "name": "noodle", "version": access.version() },
+                "instructions": "Tools for the user's Noodle notes vault: plain Markdown files where [[Note name]] links notes together."
+            })),
+            "ping" => Ok(json!({})),
+            "tools/list" => Ok(json!({ "tools": tools() })),
+            "tools/call" => {
+                let name = params.get("name").and_then(Value::as_str).unwrap_or("");
+                let args = params.get("arguments").cloned().unwrap_or(json!({}));
+                Ok(match call(access, name, &args) {
+                    Ok(text) => json!({ "content": [{ "type": "text", "text": text }] }),
+                    Err(e) => json!({ "content": [{ "type": "text", "text": e }], "isError": true }),
+                })
+            }
+            _ => Err(json!({ "code": -32601, "message": format!("Unknown method {method}") })),
+        };
+        Some(match result {
+            Ok(r) => json!({ "jsonrpc": "2.0", "id": id, "result": r }),
+            Err(e) => json!({ "jsonrpc": "2.0", "id": id, "error": e }),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -265,7 +377,7 @@ mod tests {
         let access = TestAccess(Mutex::new(Some(Vault::open(dir.path()).unwrap())));
         let key = "k".repeat(32);
         let port = 27999;
-        let server = start(access, port, key.clone()).unwrap();
+        let server = start(access, port, key.clone(), false).unwrap();
         let base = format!("http://127.0.0.1:{port}");
         let auth = format!("Bearer {key}");
 
@@ -283,6 +395,14 @@ mod tests {
 
         let back = ureq::get(&format!("{base}/v1/backlinks/World")).header("Authorization", &auth).call().unwrap().body_mut().read_to_string().unwrap();
         assert!(back.contains("Hello.md"));
+
+        let mcp = |body: &str| ureq::post(&format!("{base}/mcp")).header("Authorization", &auth).send(body).unwrap().body_mut().read_to_string().unwrap();
+        assert!(mcp(r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}"#).contains("2025-06-18"));
+        assert!(mcp(r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#).contains("append_to_note"));
+        let read = mcp(r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"read_note","arguments":{"path":"World"}}}"#);
+        assert!(read.contains("Back to [[Hello]]"), "{read}");
+        mcp(r#"{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"append_to_note","arguments":{"path":"World","text":"- from mcp"}}}"#);
+        assert!(std::fs::read_to_string(dir.path().join("World.md")).unwrap().ends_with("- from mcp"));
         server.stop();
     }
 }
