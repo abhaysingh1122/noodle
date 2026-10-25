@@ -147,6 +147,14 @@ fn open_vault(app: AppHandle, state: State<AppState>, path: String) -> CmdResult
     Ok(info)
 }
 
+/// The vault the phone app uses: a "Noodle" folder in the app's own storage.
+#[tauri::command]
+fn default_vault(app: AppHandle) -> CmdResult<String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?.join("Noodle");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.to_string_lossy().into_owned())
+}
+
 /// Renames the open vault's folder itself, then reopens it under the new name.
 #[tauri::command]
 fn rename_vault(app: AppHandle, state: State<AppState>, name: String) -> CmdResult<VaultInfo> {
@@ -357,6 +365,7 @@ pub fn run() {
             open_vault,
             create_vault,
             rename_vault,
+            default_vault,
             import_image,
             sync_snapshot,
             read_bytes,
