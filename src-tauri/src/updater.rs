@@ -35,7 +35,7 @@ pub struct UpdateInfo {
     pub available: bool,
     pub notes: String,
     pub page_url: String,
-    /// The Windows setup `.exe`, when the release has one.
+    /// The Windows setup `.exe` (or the `.apk` on Android), when the release has one.
     pub installer_url: Option<String>,
     pub installer_size: u64,
 }
@@ -60,7 +60,11 @@ pub fn is_newer(latest: &str, current: &str) -> bool {
 fn pick_installer(assets: &[Asset]) -> Option<&Asset> {
     assets.iter().find(|a| {
         let n = a.name.to_lowercase();
-        n.ends_with("-setup.exe") || (n.ends_with(".exe") && n.contains("setup"))
+        if cfg!(target_os = "android") {
+            n.ends_with(".apk")
+        } else {
+            n.ends_with("-setup.exe") || (n.ends_with(".exe") && n.contains("setup"))
+        }
     })
 }
 
