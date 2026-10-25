@@ -2356,3 +2356,38 @@ body.resizing {
   font-size: 15px;
   letter-spacing: normal;
 }
+.verify-wait {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px 14px;
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+}
+.verify-wait .form-note {
+  margin: 0;
+  color: var(--text);
+}
+.verify-envelope {
+  flex: none;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--surface);
+  transform: rotate(-6deg);
+  animation: wiggle 2.4s ease-in-out infinite;
+}
+@keyframes wiggle {
+  50% {
+    transform: rotate(6deg) translateY(-2px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .verify-envelope {
+    animation: none;
+  }
+}
