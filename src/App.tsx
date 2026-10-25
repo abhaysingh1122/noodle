@@ -161,7 +161,7 @@ export default function App() {
   );
 
   const openVault = useCallback(
-    async (path: string) => {
+    async (path: string): Promise<string | null> => {
       try {
         const info = await api.openVault(path);
         setRoot(info.root);
@@ -176,8 +176,10 @@ export default function App() {
         setNote(null);
         noteRef.current = null;
         if (first) openPath(first.path);
+        return info.root;
       } catch (e) {
         setError(String(e));
+        return null;
       } finally {
         setStarting(false);
       }
@@ -200,10 +202,10 @@ export default function App() {
           if (!picked) return;
           parent = picked;
         }
-        const path = await api.createVault(name, parent);
+        // Linked under the path it's opened as, so the link is found again later.
+        const root = await openVault(await api.createVault(name, parent));
         // Signed in: new vaults go to the cloud straight away.
-        if (cloudRef.current?.session) await cloudRef.current.keepInCloud(path, folderName(path)).catch((e) => setError(String(e)));
-        openVault(path);
+        if (root && cloudRef.current?.session) await cloudRef.current.keepInCloud(root, folderName(root)).catch((e) => setError(String(e)));
       } catch (e) {
         setError(String(e));
       }
@@ -215,9 +217,8 @@ export default function App() {
   const openCloudVault = useCallback(
     async (vault: CloudVault) => {
       try {
-        const path = await api.createVault(vault.name);
-        cloudRef.current?.linkFolder(path, vault);
-        openVault(path);
+        const root = await openVault(await api.createVault(vault.name));
+        if (root) cloudRef.current?.linkFolder(root, vault);
       } catch (e) {
         setError(String(e));
       }
