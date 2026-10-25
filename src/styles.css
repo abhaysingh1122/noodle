@@ -995,6 +995,7 @@ kbd {
   z-index: 50;
 }
 .modal {
+  position: relative;
   width: min(560px, calc(100vw - 32px));
   max-height: calc(88vh - 24px);
   display: flex;
@@ -1008,6 +1009,27 @@ kbd {
     0 30px 80px rgba(20, 30, 10, 0.35);
   overflow: hidden;
   padding: 8px;
+}
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--muted);
+  /* a little off-kilter, like the emoji badge */
+  transform: rotate(6deg);
+  transition: transform 0.18s, background 0.18s;
+}
+.modal-close:hover {
+  transform: rotate(-84deg) scale(1.06);
+  background: var(--accent);
+  color: #1f2a17;
 }
 .modal.wide {
   width: min(680px, calc(100vw - 32px));
@@ -1121,6 +1143,7 @@ kbd {
   display: flex;
   gap: 14px;
   align-items: center;
+  padding-right: 40px;
 }
 .settings header .logo {
   border-radius: 14px;
