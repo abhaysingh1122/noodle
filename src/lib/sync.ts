@@ -329,6 +329,45 @@ export function useCloudSync(root: string | null, onRemoteChanges: (paths: strin
     [client, linkFolder, refreshVaults],
   );
 
+  /** Gives a cloud vault a new name, everywhere. */
+  const renameCloudVault = useCallback(
+    async (id: string, name: string) => {
+      const { error } = await client.from("vaults").update({ name }).eq("id", id);
+      if (error) throw describe(error.message);
+      setLinks((prev) => {
+        const next = Object.fromEntries(Object.entries(prev).map(([folder, l]) => [folder, l.id === id ? { ...l, name } : l]));
+        writeJson(LINKS_KEY, next);
+        return next;
+      });
+      refreshVaults();
+    },
+    [client, refreshVaults],
+  );
+
+  /** Deletes a vault from the cloud (notes and files). Folders on devices are left alone, just no longer synced. */
+  const deleteCloudVault = useCallback(
+    async (id: string) => {
+      const uid = session?.user.id;
+      if (!uid) return;
+      const folder = `${uid}/${id}`;
+      for (;;) {
+        const { data } = await client.storage.from(BUCKET).list(folder, { limit: 1000 });
+        if (!data?.length) break;
+        const { error } = await client.storage.from(BUCKET).remove(data.map((f) => `${folder}/${f.name}`));
+        if (error) break;
+      }
+      const { error } = await client.from("vaults").delete().eq("id", id);
+      if (error) throw describe(error.message);
+      setLinks((prev) => {
+        const next = Object.fromEntries(Object.entries(prev).filter(([, l]) => l.id !== id));
+        writeJson(LINKS_KEY, next);
+        return next;
+      });
+      refreshVaults();
+    },
+    [client, session, refreshVaults],
+  );
+
   const decline = useCallback((folder: string) => {
     setDeclined((prev) => {
       const next = [...new Set([...prev, folder])];
@@ -432,6 +471,8 @@ export function useCloudSync(root: string | null, onRemoteChanges: (paths: strin
     links,
     linkFolder,
     keepInCloud,
+    renameCloudVault,
+    deleteCloudVault,
     declined: root ? declined.includes(root) : false,
     decline,
     vaults,
