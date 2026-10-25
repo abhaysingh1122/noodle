@@ -1,0 +1,14 @@
+[package]
+name = "tauri-plugin-apk-install"
+version = "0.1.0"
+description = "Hands a downloaded APK to Android's package installer, so phone updates install in place"
+license = "MIT"
+edition = "2021"
+links = "tauri-plugin-apk-install"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
+
+[dependencies]
+tauri = "2"
+serde_json = "1"
