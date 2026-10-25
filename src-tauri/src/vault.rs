@@ -69,6 +69,22 @@ pub struct GraphNode {
     pub exists: bool,
 }
 
+/// One synced item: a note, a folder, or a file in `attachments/`.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SyncItem {
+    pub path: String,
+    /// "note", "folder" or "file".
+    pub kind: &'static str,
+    /// SHA-256 of the contents (empty for folders), the same on every device.
+    pub hash: String,
+}
+
+pub fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+}
+
 #[derive(Debug, Clone, PartialEq)]
 struct Link {
     target: String,
@@ -340,6 +356,46 @@ impl Vault {
         Ok(rel)
     }
 
+    /// Everything cloud sync cares about, with content hashes.
+    pub fn sync_snapshot(&self) -> Vec<SyncItem> {
+        WalkDir::new(&self.root)
+            .min_depth(1)
+            .into_iter()
+            .filter_entry(|e| !(e.file_type().is_dir() && is_ignored_dir(&e.file_name().to_string_lossy())))
+            .filter_map(|e| e.ok())
+            .filter_map(|e| {
+                let rel = to_rel(&self.root, e.path())?;
+                if e.file_type().is_dir() {
+                    return Some(SyncItem { path: rel, kind: "folder", hash: String::new() });
+                }
+                let kind = if is_note(&rel) {
+                    "note"
+                } else if rel.starts_with(&format!("{ATTACHMENTS_DIR}/")) {
+                    "file"
+                } else {
+                    return None;
+                };
+                let bytes = fs::read(e.path()).ok()?;
+                Some(SyncItem { path: rel, kind, hash: sha256_hex(&bytes) })
+            })
+            .collect()
+    }
+
+    pub fn read_bytes(&self, rel: &str) -> Result<Vec<u8>> {
+        fs::read(self.resolve_path(rel)?).map_err(err)
+    }
+
+    /// Writes a file at exactly this vault path, creating folders as needed.
+    pub fn write_bytes(&mut self, rel: &str, bytes: &[u8]) -> Result<()> {
+        let p = self.resolve_path(rel)?;
+        if let Some(parent) = p.parent() {
+            fs::create_dir_all(parent).map_err(err)?;
+        }
+        fs::write(&p, bytes).map_err(err)?;
+        self.index_file(rel);
+        Ok(())
+    }
+
     /// Copies a file from anywhere on the computer into `attachments/`.
     pub fn import_file(&self, source: &Path) -> Result<String> {
         let name = source.file_name().ok_or("not a file")?.to_string_lossy().into_owned();
@@ -541,6 +597,17 @@ mod tests {
         assert_eq!(v.save_attachment("cat.png", b"2").unwrap(), "attachments/cat 1.png");
         assert_eq!(v.save_attachment("../../evil.png", b"3").unwrap(), "attachments/evil.png");
         assert_eq!(v.read("attachments/cat 1.png").unwrap(), "2");
+    }
+
+    #[test]
+    fn snapshot_lists_notes_folders_and_attachments() {
+        let (_dir, mut v) = vault_with(&[("A.md", "hi"), ("Sub/B.md", ""), ("random.txt", "x")]);
+        v.write_bytes("attachments/p.png", b"img").unwrap();
+        let mut snap = v.sync_snapshot();
+        snap.sort_by(|a, b| a.path.cmp(&b.path));
+        let summary: Vec<_> = snap.iter().map(|i| (i.path.as_str(), i.kind)).collect();
+        assert_eq!(summary, vec![("A.md", "note"), ("Sub", "folder"), ("Sub/B.md", "note"), ("attachments", "folder"), ("attachments/p.png", "file")]);
+        assert_eq!(snap[0].hash, "8f434346648f6b96df89dda901c5176b10a6d83961dd3c1ac88b59b2dc327aa4");
     }
 
     #[test]
