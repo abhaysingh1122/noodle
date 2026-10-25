@@ -1902,3 +1902,63 @@ kbd {
   flex: 1;
   border-radius: var(--r-sm);
 }
+
+/* Account & sync */
+.api-box b {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.account-form input {
+  padding: 10px 16px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-weight: 600;
+  outline: 2px solid transparent;
+}
+.account-form input:focus {
+  outline-color: var(--accent);
+}
+.account-form > .primary {
+  align-self: flex-end;
+}
+.account-form + .error,
+.account-form + .api-live {
+  margin-top: 10px;
+}
+.account-actions {
+  margin-top: 12px;
+  justify-content: space-between;
+}
+.cloud-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 12px;
+  padding: 3px 12px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+}
+.cloud-pill.syncing svg {
+  animation: bob-cloud 1s ease-in-out infinite alternate;
+}
+@keyframes bob-cloud {
+  to {
+    transform: translateY(-2px) rotate(-8deg);
+  }
+}
+.cloud-pill.error {
+  background: #fde2dd;
+  color: #7a2a1d;
+}
