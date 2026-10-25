@@ -1,0 +1,20 @@
+name: Keep Noodle Cloud awake
+
+# Free Supabase projects pause after a week without activity. A tiny query
+# every two days keeps the database awake.
+on:
+  schedule:
+    - cron: "17 6 */2 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the database
+        env:
+          URL: https://rvkpswyezcmkdtrixcrp.supabase.co
+          # The publishable key ships in the app anyway; it can only call what the database rules allow.
+          KEY: sb_publishable_H3Fq2GLzvRvxf_k4IQ2aBg_2xscrHsD
+        run: |
+          curl -fsS -X POST "$URL/rest/v1/rpc/keepalive" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}'
