@@ -117,6 +117,7 @@ export const demoApi: Api = {
   },
   onVaultChanged: async () => () => {},
   configureApi: async (enabled, port) => (enabled ? port : null),
+  localIp: async () => "192.168.1.20",
   appVersion: async () => "0.1.0",
   checkUpdate: async () => ({ current: "0.1.0", latest: "0.1.0", available: false, notes: "", pageUrl: "", installerUrl: null, installerSize: 0 }),
   installUpdate: async () => {},
