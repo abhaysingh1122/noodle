@@ -99,6 +99,9 @@ function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) 
   );
 }
 
+/** Where the confirmation email sends people after they click it. */
+const CONFIRMED_PAGE = "https://abhaysingh1122.github.io/noodle/confirmed.html";
+
 /** Connect a Supabase project, sign in with email, and link this vault to it. */
 function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null }) {
   const [url, setUrl] = useState(cloud.config?.url ?? "");
@@ -107,6 +110,8 @@ function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
+  // Set when the email exists but hasn't been confirmed, so we can offer a fresh link.
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const vaultName = root?.split(/[\\/]/).filter(Boolean).pop();
 
   const run = async (work: () => Promise<string | void>) => {
@@ -163,7 +168,11 @@ function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null
             e.preventDefault();
             run(async () => {
               const { error } = await cloud.client!.auth.signInWithPassword({ email, password });
-              if (error) throw new Error(error.message);
+              if (error && /not confirmed/i.test(error.message)) {
+                setUnconfirmed(true);
+                throw new Error("This email isn't confirmed yet. Tap \"Send a new link\" and open it on any device.");
+              }
+              if (error) throw new Error(/invalid login/i.test(error.message) ? "That email and password don't match." : error.message);
             });
           }}
         >
@@ -176,9 +185,17 @@ function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null
               disabled={busy || !email || password.length < 8}
               onClick={() =>
                 run(async () => {
-                  const { data, error } = await cloud.client!.auth.signUp({ email, password });
-                  if (error) throw new Error(error.message);
-                  if (!data.session) return "Check your email and click the confirmation link, then sign in here.";
+                  const { data, error } = await cloud.client!.auth.signUp({ email, password, options: { emailRedirectTo: CONFIRMED_PAGE } });
+                  if (error) throw new Error(/already registered/i.test(error.message) ? "You already have an account. Just press Sign in." : error.message);
+                  // An address that's already taken comes back as a user with no identities, and no email goes out.
+                  if (data.user && data.user.identities?.length === 0) {
+                    setUnconfirmed(true);
+                    return "You already have an account with this email. Press Sign in. If it was never confirmed, tap \"Send a new link\".";
+                  }
+                  if (!data.session) {
+                    setUnconfirmed(true);
+                    return "Almost there! We sent a confirmation link to your inbox. Open it, then press Sign in here.";
+                  }
                 })
               }
             >
@@ -190,6 +207,21 @@ function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null
           </div>
         </form>
         {message && <p className={message.error ? "error" : "api-live"}>{message.text}</p>}
+        {unconfirmed && (
+          <button
+            className="ghost small-btn"
+            disabled={busy || !email}
+            onClick={() =>
+              run(async () => {
+                const { error } = await cloud.client!.auth.resend({ type: "signup", email, options: { emailRedirectTo: CONFIRMED_PAGE } });
+                if (error) throw new Error(/rate|seconds/i.test(error.message) ? "Too many emails just now. Wait a minute and try again." : error.message);
+                return `A new link is on its way to ${email}. Check spam too.`;
+              })
+            }
+          >
+            Send a new link
+          </button>
+        )}
         <button className="ghost small-btn" onClick={() => cloud.setConfig(null)}>
           Use a different Supabase project
         </button>
