@@ -331,6 +331,31 @@ kbd {
   margin-top: 6px;
 }
 
+/* Phone app: keep clear of the status bar at the top and the gesture bar at the bottom. */
+.mobile {
+  --safe-top: max(env(safe-area-inset-top, 0px), 40px);
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), 18px);
+}
+.mobile .app {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+.mobile .sidebar {
+  top: calc(var(--safe-top) + 6px);
+  bottom: calc(var(--safe-bottom) + 6px);
+}
+.mobile .modal-backdrop {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+}
+.mobile .drawer-button {
+  width: 42px;
+  height: 42px;
+}
+.cloud-pill.off {
+  margin-left: auto;
+}
+
 /* Top bar */
 .topbar {
   display: flex;
