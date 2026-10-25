@@ -7,6 +7,7 @@ import { DEFAULT_PORT, newApiKey } from "../lib/localApi";
 import type { Mode, ThemeSettings } from "../lib/theme";
 import type { useUpdates } from "../lib/updates";
 import { PALETTES } from "../lib/theme";
+import { isMobile } from "../lib/api";
 import { Modal } from "./Modal";
 import { Logo } from "./Logo";
 
@@ -338,7 +339,8 @@ export function SettingsPanel(props: {
               {u.state.kind === "checking" && "Looking for a new version…"}
               {u.state.kind === "latest" && "You have the newest version."}
               {u.state.kind === "available" && `Version ${u.state.info.latest} is ready to install.`}
-              {u.state.kind === "installing" && `Downloading ${u.state.info.latest}… Noodle will close, update and reopen by itself.`}
+              {u.state.kind === "available" && isMobile && " Tap Update now, then open the downloaded file to install it."}
+              {u.state.kind === "installing" && (isMobile ? "Opening the download…" : `Downloading ${u.state.info.latest}… Noodle will close, update and reopen by itself.`)}
               {u.state.kind === "error" && u.state.message}
             </p>
           </div>
