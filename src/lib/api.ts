@@ -28,6 +28,12 @@ export interface Graph {
   edges: [string, string][];
 }
 
+export interface SyncItem {
+  path: string;
+  kind: "note" | "folder" | "file";
+  hash: string;
+}
+
 export interface UpdateInfo {
   current: string;
   latest: string;
@@ -58,6 +64,11 @@ export interface Api {
   importImage(source: string): Promise<string>;
   /** Saves pasted image bytes into the attachments and returns the vault path. */
   saveAttachment(name: string, bytes: Uint8Array): Promise<string>;
+  /** Content hashes of every note, folder and attachment, for cloud sync. */
+  syncSnapshot(): Promise<SyncItem[]>;
+  readBytes(path: string): Promise<Uint8Array>;
+  /** Writes bytes to an exact vault path (used when downloading attachments). */
+  writeBytes(path: string, bytes: Uint8Array): Promise<void>;
   /** A URL the window can load for a file inside the vault. */
   fileUrl(root: string, path: string): string;
   resolveLink(target: string): Promise<string | null>;
@@ -100,6 +111,9 @@ const tauriApi: Api = {
   saveAttachment: (name, bytes) =>
     invoke("save_attachment", bytes, { headers: { "x-file-name": name.replace(/[^\w.\- ]/g, "_") } }),
   fileUrl: (root, path) => convertFileSrc(`${root}/${path}`),
+  syncSnapshot: () => invoke("sync_snapshot"),
+  readBytes: async (path) => new Uint8Array(await invoke<ArrayBuffer>("read_bytes", { path })),
+  writeBytes: (path, bytes) => invoke("write_bytes", bytes, { headers: { "x-path": encodeURIComponent(path) } }),
   resolveLink: (target) => invoke("resolve_link", { target }),
   backlinks: (path) => invoke("backlinks", { path }),
   search: (query) => invoke("search", { query }),
