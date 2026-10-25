@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Download, Eye, EyeOff, RefreshCw, KeyRound } from "lucide-react";
+import { Copy, Check, Download, Eye, EyeOff, RefreshCw, KeyRound, Mail, Trash2 } from "lucide-react";
 import type { useLocalApi } from "../lib/localApi";
 import type { CloudSync } from "../lib/sync";
 import { Cloud, LogOut } from "lucide-react";
@@ -139,6 +139,132 @@ function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) 
   );
 }
 
+type AccountPanel = "password" | "email" | "delete" | null;
+
+/** Change password or email, or delete the account, without leaving the app. */
+function ManageAccount({ cloud }: { cloud: CloudSync }) {
+  const [panel, setPanel] = useState<AccountPanel>(null);
+  const [password, setPassword] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
+  const auth = cloud.client.auth;
+
+  const open = (p: AccountPanel) => {
+    setPanel((cur) => (cur === p ? null : p));
+    setMessage(null);
+    setCode("");
+    setCodeSent(false);
+    setPassword("");
+    setConfirmText("");
+  };
+  const run = async (work: () => Promise<string | void>) => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const done = await work();
+      if (done) setMessage({ error: false, text: done });
+    } catch (e) {
+      setMessage({ error: true, text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="manage-account">
+      <div className="manage-tabs">
+        <button className={panel === "password" ? "on" : ""} onClick={() => open("password")}>
+          <KeyRound size={14} /> Change password
+        </button>
+        <button className={panel === "email" ? "on" : ""} onClick={() => open("email")}>
+          <Mail size={14} /> Change email
+        </button>
+        <button className={`danger ${panel === "delete" ? "on" : ""}`} onClick={() => open("delete")}>
+          <Trash2 size={14} /> Delete account
+        </button>
+      </div>
+
+      {panel === "password" && (
+        <form
+          className="account-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(async () => {
+              const { error } = await auth.updateUser({ password });
+              if (error) throw error;
+              setPassword("");
+              return "Password changed. Use it next time you sign in on any device.";
+            });
+          }}
+        >
+          <input type="password" autoComplete="new-password" placeholder="New password (8+ characters)" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus />
+          <div className="prompt-buttons">
+            <button type="submit" className="primary" disabled={busy || password.length < 8}>
+              Save new password
+            </button>
+          </div>
+        </form>
+      )}
+
+      {panel === "email" && (
+        <form
+          className="account-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(async () => {
+              if (!codeSent) {
+                const { error } = await auth.updateUser({ email: newEmail.trim() });
+                if (error) throw error;
+                setCodeSent(true);
+                return `We sent a code to ${newEmail.trim()}. Type it here to finish.`;
+              }
+              const { error } = await auth.verifyOtp({ email: newEmail.trim(), token: code.replace(/\D/g, ""), type: "email_change" });
+              if (error) throw error;
+              setPanel(null);
+              return "Done! Your account now uses the new email.";
+            });
+          }}
+        >
+          <input type="email" autoComplete="email" placeholder="New email" value={newEmail} disabled={codeSent} onChange={(e) => setNewEmail(e.target.value)} autoFocus />
+          {codeSent && <input className="code-input" inputMode="numeric" autoComplete="one-time-code" placeholder="Code from the email" value={code} onChange={(e) => setCode(e.target.value)} />}
+          <div className="prompt-buttons">
+            <button type="submit" className="primary" disabled={busy || !newEmail.includes("@") || (codeSent && code.replace(/\D/g, "").length < 6)}>
+              {codeSent ? "Confirm new email" : "Send a code"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {panel === "delete" && (
+        <form
+          className="account-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(async () => {
+              await cloud.deleteAccount();
+            });
+          }}
+        >
+          <p className="form-note">
+            This deletes your account and every vault in Noodle Cloud, for good. The copies on this device stay. Type <b>delete</b> to confirm.
+          </p>
+          <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} placeholder="delete" autoFocus />
+          <div className="prompt-buttons">
+            <button type="submit" className="primary danger-btn" disabled={busy || confirmText.trim().toLowerCase() !== "delete"}>
+              Delete my account
+            </button>
+          </div>
+        </form>
+      )}
+      {message && <p className={message.error ? "error" : "api-live"}>{message.text}</p>}
+    </div>
+  );
+}
+
 /** Noodle Cloud: the account, and whether the open vault syncs. */
 function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null }) {
   const [busy, setBusy] = useState(false);
@@ -180,6 +306,7 @@ function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null
       </div>
       {status.kind === "error" && <p className="error">{status.message}</p>}
       {problem && <p className="error">{problem}</p>}
+      <ManageAccount cloud={cloud} />
       <div className="prompt-buttons account-actions">
         <button className="ghost small-btn" onClick={() => cloud.signOut()}>
           <LogOut size={14} /> Sign out
