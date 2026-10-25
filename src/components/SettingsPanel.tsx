@@ -45,9 +45,9 @@ function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) 
     `${curl} "${base}/v1/search?q=noodle" -H "${auth}"`,
   ];
   const mcpUrl = `${lanBase ?? base}/mcp`;
-  const claudeCode = `claude mcp add --transport http noodle ${mcpUrl} --header "${auth}"`;
+  const httpConfig = JSON.stringify({ mcpServers: { noodle: { type: "http", url: mcpUrl, headers: { Authorization: `Bearer ${settings.key}` } } } }, null, 2);
   // The header goes through an env variable because some apps split arguments at spaces.
-  const claudeDesktop = JSON.stringify(
+  const bridgeConfig = JSON.stringify(
     { mcpServers: { noodle: { command: "npx", args: ["-y", "mcp-remote", mcpUrl, "--allow-http", "--header", "Authorization:${AUTH_HEADER}"], env: { AUTH_HEADER: `Bearer ${settings.key}` } } } },
     null,
     2,
@@ -108,16 +108,16 @@ function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) 
       {settings.enabled && (
         <>
           <details className="api-examples">
-            <summary>Connect Claude or another AI assistant</summary>
-            <p className="muted small">Noodle speaks MCP at {mcpUrl}. In Claude Code, run:</p>
+            <summary>Connect an AI assistant (MCP)</summary>
+            <p className="muted small">Noodle speaks MCP at {mcpUrl}. For assistants that connect to MCP servers over HTTP, add:</p>
             <div className="api-example">
-              <code>{claudeCode}</code>
-              <CopyButton text={claudeCode} />
+              <code className="pre">{httpConfig}</code>
+              <CopyButton text={httpConfig} />
             </div>
-            <p className="muted small">For Claude Desktop, add this to its config file (Settings → Developer → Edit config), then restart it:</p>
+            <p className="muted small">For desktop apps that only start local MCP commands, use this bridge in their config file instead, then restart the app:</p>
             <div className="api-example">
-              <code className="pre">{claudeDesktop}</code>
-              <CopyButton text={claudeDesktop} />
+              <code className="pre">{bridgeConfig}</code>
+              <CopyButton text={bridgeConfig} />
             </div>
             <p className="muted small">Tools: list_notes, read_note, write_note, append_to_note, search_notes, get_backlinks.</p>
           </details>
