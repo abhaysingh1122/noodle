@@ -27,31 +27,38 @@ vi.mock("./api", () => ({
 
 const { syncOnce } = await import("./sync");
 
-type Row = { path: string; kind: string; hash: string; content: string; deleted: boolean; device: string | null };
+type Row = { vault_id: string; path: string; kind: string; hash: string; content: string; deleted: boolean; device: string | null };
 
-/** Just enough of the Supabase client for the sync engine. */
+/** Just enough of the Supabase client for the sync engine: filters, ranges and upserts on one table. */
 function fakeCloud() {
   const rows = new Map<string, Row>();
+  const key = (r: Pick<Row, "vault_id" | "path">) => `${r.vault_id}|${r.path}`;
   const pick = (r: Row, cols: string) => Object.fromEntries(cols.split(",").map((c) => [c.trim(), r[c.trim() as keyof Row]]));
+  const query = (cols: string) => {
+    let list = [...rows.values()].sort((a, b) => a.path.localeCompare(b.path));
+    const q = {
+      eq: (c: string, v: string) => ((list = list.filter((r) => r[c as keyof Row] === v)), q),
+      in: (c: string, vs: string[]) => ((list = list.filter((r) => vs.includes(r[c as keyof Row] as string))), q),
+      order: () => q,
+      range: async (a: number, b: number) => ({ data: list.slice(a, b + 1).map((r) => pick(r, cols)), error: null }),
+      single: async () => ({ data: pick(list[0], cols), error: null }),
+      then: (resolve: (v: unknown) => void) => resolve({ data: list.map((r) => pick(r, cols)), error: null }),
+    };
+    return q;
+  };
   const client = {
     auth: { getUser: async () => ({ data: { user: { id: "u1" } } }) },
     storage: { from: () => ({ upload: async () => ({ error: null }), download: async () => ({ data: new Blob([]), error: null }) }) },
     from: () => ({
-      select: (cols: string) => {
-        const all = [...rows.values()].sort((a, b) => a.path.localeCompare(b.path));
-        return {
-          order: () => ({ range: async (a: number, b: number) => ({ data: all.slice(a, b + 1).map((r) => pick(r, cols)), error: null }) }),
-          eq: (_c: string, v: string) => ({ single: async () => ({ data: pick(rows.get(v)!, cols), error: null }) }),
-          in: async (_c: string, vs: string[]) => ({ data: vs.map((v) => pick(rows.get(v)!, cols)), error: null }),
-        };
-      },
+      select: query,
       upsert: async (list: Row[]) => {
-        list.forEach((r) => rows.set(r.path, { ...r }));
+        list.forEach((r) => rows.set(key(r), { ...r }));
         return { error: null };
       },
     }),
   };
-  return { rows, client: client as unknown as SupabaseClient };
+  const get = (path: string, vault = "V") => rows.get(`${vault}|${path}`);
+  return { rows, get, client: client as unknown as SupabaseClient };
 }
 
 const device = (notes: Record<string, string> = {}, folders: string[] = []): Fs => ({ notes: new Map(Object.entries(notes)), folders: new Set(folders) });
@@ -64,9 +71,9 @@ describe("cloud sync", () => {
     const pc = device({ "A.md": "hello", "Sub/B.md": "bee" }, ["Sub"]);
     const phone = device();
     current = pc;
-    await syncOnce(cloud.client, "pc-vault");
+    await syncOnce(cloud.client, "V", "pc-vault");
     current = phone;
-    const r = await syncOnce(cloud.client, "phone-vault");
+    const r = await syncOnce(cloud.client, "V", "phone-vault");
     expect(Object.fromEntries(phone.notes)).toEqual({ "A.md": "hello", "Sub/B.md": "bee" });
     expect([...phone.folders]).toEqual(["Sub"]);
     expect(r.changed.sort()).toEqual(["A.md", "Sub", "Sub/B.md"]);
@@ -77,17 +84,17 @@ describe("cloud sync", () => {
     const pc = device({ "A.md": "one", "B.md": "bee" });
     const phone = device();
     current = pc;
-    await syncOnce(cloud.client, "v");
+    await syncOnce(cloud.client, "V", "v");
     current = phone;
-    await syncOnce(cloud.client, "v2");
+    await syncOnce(cloud.client, "V", "v2");
 
     phone.notes.set("A.md", "two");
     phone.notes.delete("B.md");
-    await syncOnce(cloud.client, "v2");
+    await syncOnce(cloud.client, "V", "v2");
     current = pc;
-    await syncOnce(cloud.client, "v");
+    await syncOnce(cloud.client, "V", "v");
     expect(Object.fromEntries(pc.notes)).toEqual({ "A.md": "two" });
-    expect(cloud.rows.get("B.md")!.deleted).toBe(true);
+    expect(cloud.get("B.md")!.deleted).toBe(true);
   });
 
   it("keeps both versions when a note changed on two devices", async () => {
@@ -95,26 +102,38 @@ describe("cloud sync", () => {
     const pc = device({ "A.md": "base" });
     const phone = device();
     current = pc;
-    await syncOnce(cloud.client, "v");
+    await syncOnce(cloud.client, "V", "v");
     current = phone;
-    await syncOnce(cloud.client, "v2");
+    await syncOnce(cloud.client, "V", "v2");
 
     phone.notes.set("A.md", "from phone");
-    await syncOnce(cloud.client, "v2");
+    await syncOnce(cloud.client, "V", "v2");
     current = pc;
     pc.notes.set("A.md", "from pc");
-    const r = await syncOnce(cloud.client, "v");
+    const r = await syncOnce(cloud.client, "V", "v");
     expect(pc.notes.get("A.md")).toBe("from pc");
     expect(r.conflicts).toHaveLength(1);
     expect(pc.notes.get(r.conflicts[0])).toBe("from phone");
-    expect(cloud.rows.get("A.md")!.content).toBe("from pc");
+    expect(cloud.get("A.md")!.content).toBe("from pc");
+  });
+
+  it("keeps vaults apart", async () => {
+    const cloud = fakeCloud();
+    current = device({ "Work.md": "work" });
+    await syncOnce(cloud.client, "W", "work");
+    current = device({ "Home.md": "home" });
+    await syncOnce(cloud.client, "H", "home");
+    const phone = device();
+    current = phone;
+    await syncOnce(cloud.client, "H", "phone-home");
+    expect(Object.fromEntries(phone.notes)).toEqual({ "Home.md": "home" });
   });
 
   it("does nothing when nothing changed", async () => {
     const cloud = fakeCloud();
     current = device({ "A.md": "same" });
-    await syncOnce(cloud.client, "v");
-    const r = await syncOnce(cloud.client, "v");
+    await syncOnce(cloud.client, "V", "v");
+    const r = await syncOnce(cloud.client, "V", "v");
     expect(r).toEqual({ changed: [], pushed: 0, conflicts: [] });
   });
 });
