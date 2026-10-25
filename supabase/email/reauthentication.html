@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Is it really you?</title>
+</head>
+<!-- Noodle email: "Butter" palette. Paste into Supabase → Authentication → Emails. -->
+<body style="margin:0;padding:0;background:#fffdf4;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your Noodle confirmation code.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fffdf4;background-image:linear-gradient(135deg,#fdf1cf 0%,#fffdf4 55%,#e3f1da 100%);">
+  <tr>
+    <td align="center" style="padding:40px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#ffffff;border-radius:32px;box-shadow:0 12px 40px rgba(60,80,40,0.12);border:1px solid rgba(46,51,38,0.08);">
+        <tr>
+          <td style="height:124px;border-radius:32px 32px 0 0;background:#fbe7a6;background-image:linear-gradient(120deg,#fbe7a6 0%,#d4ecc9 100%);" valign="bottom">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+              <td align="left" valign="bottom">
+                <!-- the bowl badge sits a little crooked, like in the app -->
+                <div style="margin:0 0 -44px 36px;width:88px;height:88px;border-radius:28px;background:#fff7d1;border:6px solid #ffffff;transform:rotate(-5deg);text-align:center;line-height:88px;">
+                  <img src="https://raw.githubusercontent.com/abhaysingh1122/noodle/main/src-tauri/icons/128x128@2x.png" width="64" height="64" alt="Noodle" style="vertical-align:middle;border:0;border-radius:16px;">
+                </div>
+              </td>
+              <td align="right" valign="top" style="padding:20px 26px 0 0;">
+                <div style="display:inline-block;width:52px;height:52px;line-height:52px;text-align:center;font-size:28px;border-radius:18px;background:rgba(255,255,255,0.75);transform:rotate(-8deg);">&#128737;</div>
+              </td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:62px 40px 8px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2e3326;">
+            <div style="display:inline-block;margin:0 0 12px 0;padding:5px 14px;border-radius:999px;background:#fdf1cf;color:#80600f;font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">Quick check</div>
+            <h1 style="margin:0 0 12px 0;font-size:30px;line-height:1.2;font-weight:900;letter-spacing:-0.01em;">Is it really you?</h1>
+            <p style="margin:0 0 26px 0;font-size:16px;line-height:1.65;color:#5d6652;">Enter this code in Noodle to confirm it's you:</p>
+            <div style="display:inline-block;padding:16px 28px;border-radius:24px;background:#fdf1cf;border:2px dashed #e0b23c;font-family:'Cascadia Code',Consolas,monospace;font-size:34px;font-weight:800;letter-spacing:0.25em;color:#2e3326;transform:rotate(-1deg);">{{ .Token }}</div>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:24px 40px 36px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <div style="border-top:2px dashed #e6ebdc;padding-top:18px;font-size:13px;line-height:1.6;color:#7a8270;">If you didn't try to do anything in Noodle just now, ignore this email; the code expires on its own.</div>
+          </td>
+        </tr>
+      </table>
+      <p style="margin:20px 0 0 0;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#8c9480;">&#127836; Noodle &middot; every note is a strand</p>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
