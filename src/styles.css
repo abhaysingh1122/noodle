@@ -1186,9 +1186,41 @@ kbd {
   color: #1f2a17;
 }
 
+.drawer-button {
+  display: none;
+}
 @media (max-width: 760px) {
+  /* Phones: the sidebar becomes a drawer that slides in from the left. */
   .sidebar {
-    display: none;
+    position: fixed;
+    z-index: 45;
+    top: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: min(300px, 84vw);
+    transform: translateX(calc(-100% - 40px)) rotate(-2deg);
+    transition: transform 0.28s cubic-bezier(0.3, 1.3, 0.5, 1);
+  }
+  .drawer-open .sidebar {
+    transform: none;
+  }
+  .drawer-shade {
+    position: fixed;
+    inset: 0;
+    z-index: 44;
+    background: rgba(20, 30, 10, 0.3);
+  }
+  .drawer-button {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--bg);
+  }
+  .breadcrumb {
+    margin-right: auto;
   }
   .app {
     padding: 0;
