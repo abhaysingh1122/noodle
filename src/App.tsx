@@ -426,7 +426,12 @@ export default function App() {
           if (old) {
             setHistory(forgetVault(old));
             const link = cloud.links[old];
-            if (link) (cloud.linkFolder(old, null), cloud.linkFolder(info.root, link));
+            if (link) {
+              cloud.linkFolder(old, null);
+              cloud.linkFolder(info.root, link);
+              // The cloud copy takes the new name too, so other devices see it.
+              cloud.renameCloudVault(link.id, folderName(info.root)).catch((e) => setError(String(e)));
+            }
           }
           setHistory(rememberVault(info.root));
           const last = old && readStored(lastNoteKey(old));
@@ -467,6 +472,9 @@ export default function App() {
         onOpen={openVault}
         onOpenCloud={openCloudVault}
         onForget={(path) => setHistory(forgetVault(path))}
+        onUnlink={(path) => cloud.linkFolder(path, null)}
+        onRenameCloud={(id, name) => cloud.renameCloudVault(id, name).catch((e) => setError(String(e)))}
+        onDeleteCloud={(id) => cloud.deleteCloudVault(id).catch((e) => setError(String(e)))}
         onSignIn={() => setSigningIn(true)}
         onCreate={createVault}
       />
@@ -541,8 +549,17 @@ export default function App() {
             <button className="ghost small-btn" onClick={() => cloud.decline(root)}>
               Not now
             </button>
+            {/* A renamed or moved folder can pick up its old cloud vault instead of making a new one. */}
+            {(cloud.vaults ?? [])
+              .filter((v) => !Object.values(cloud.links).some((l) => l.id === v.id) || Object.entries(cloud.links).some(([f, l]) => l.id === v.id && !history.some((h) => h.path === f)))
+              .slice(0, 3)
+              .map((v) => (
+                <button key={v.id} className="ghost small-btn" title="Sync this folder with that cloud vault" onClick={() => cloud.linkFolder(root, v)}>
+                  Use “{v.name}”
+                </button>
+              ))}
             <button className="primary small-btn" onClick={() => cloud.keepInCloud(root, folderName(root)).catch((e) => setError(String(e)))}>
-              Sync it
+              Sync as new
             </button>
           </div>
         )}
