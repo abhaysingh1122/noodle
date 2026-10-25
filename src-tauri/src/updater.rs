@@ -89,8 +89,8 @@ pub fn check(current: &str) -> Result<UpdateInfo, String> {
     })
 }
 
-/// Downloads the installer into the temp folder and returns its path.
-pub fn download(url: &str, expected_size: u64) -> Result<PathBuf, String> {
+/// Downloads the installer to `path`.
+pub fn download(url: &str, expected_size: u64, path: PathBuf) -> Result<PathBuf, String> {
     if !url.starts_with("https://github.com/abhaysingh1122/noodle/releases/download/") {
         return Err("Refusing to download an installer from an unexpected address".into());
     }
@@ -98,7 +98,9 @@ pub fn download(url: &str, expected_size: u64) -> Result<PathBuf, String> {
         .header("User-Agent", USER_AGENT)
         .call()
         .map_err(|e| format!("Download failed: {e}"))?;
-    let path = std::env::temp_dir().join("noodle-update-setup.exe");
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
     let mut file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
     let written = std::io::copy(&mut response.body_mut().as_reader(), &mut file).map_err(|e| format!("Download failed: {e}"))?;
     file.flush().map_err(|e| e.to_string())?;
@@ -158,6 +160,6 @@ mod tests {
 
     #[test]
     fn refuses_foreign_download_urls() {
-        assert!(download("https://example.com/evil.exe", 0).is_err());
+        assert!(download("https://example.com/evil.exe", 0, std::env::temp_dir().join("x.exe")).is_err());
     }
 }
