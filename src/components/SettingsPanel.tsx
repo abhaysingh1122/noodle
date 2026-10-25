@@ -410,8 +410,8 @@ export function SettingsPanel(props: {
               {u.state.kind === "checking" && "Looking for a new version…"}
               {u.state.kind === "latest" && "You have the newest version."}
               {u.state.kind === "available" && `Version ${u.state.info.latest} is ready to install.`}
-              {u.state.kind === "available" && isMobile && " Tap Update now, then open the downloaded file to install it."}
-              {u.state.kind === "installing" && (isMobile ? "Opening the download…" : `Downloading ${u.state.info.latest}… Noodle will close, update and reopen by itself.`)}
+              {u.state.kind === "available" && isMobile && " Tap Update now to install it."}
+              {u.state.kind === "installing" && (isMobile ? `Downloading ${u.state.info.latest}… Android asks to update Noodle when it's done.` : `Downloading ${u.state.info.latest}… Noodle will close, update and reopen by itself.`)}
               {u.state.kind === "error" && u.state.message}
             </p>
           </div>
