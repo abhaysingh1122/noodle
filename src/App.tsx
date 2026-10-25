@@ -15,6 +15,8 @@ import { GraphView } from "./components/GraphView";
 import { useUpdates } from "./lib/updates";
 import { setMediaResolver } from "./lib/media";
 import { useLocalApi } from "./lib/localApi";
+import { useCloudSync } from "./lib/sync";
+import { Cloud } from "lucide-react";
 
 const RECENT_KEY = "noodle.lastVault";
 /** The note that was open last in each vault, so reopening lands on it again. */
@@ -80,6 +82,8 @@ export default function App() {
   const noteRef = useRef<OpenNote | null>(null);
   noteRef.current = note;
   const editorFlush = useRef<(() => void) | null>(null);
+  // Set once cloud sync is ready; saving a note asks it to sync soon.
+  const cloudSyncRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     applyTheme(theme);
@@ -107,6 +111,7 @@ export default function App() {
     setSaving(true);
     try {
       await api.writeNote(n.path, text);
+      cloudSyncRef.current?.();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -228,11 +233,9 @@ export default function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, [showGraph, overlay]);
 
-  // Pick up edits made outside Noodle (another editor, Syncthing, git pull…).
-  useEffect(() => {
-    if (!root) return;
-    let unlisten: (() => void) | undefined;
-    api.onVaultChanged(async (paths) => {
+  // Show changes that came from elsewhere: another app, a sync tool, or the cloud.
+  const applyOutsideChanges = useCallback(
+    async (paths: string[]) => {
       refreshEntries();
       setGraphVersion((v) => v + 1);
       const n = noteRef.current;
@@ -247,9 +250,24 @@ export default function App() {
       } catch {
         // The note was deleted or moved; the tree refresh shows that.
       }
-    }).then((u) => (unlisten = u));
+    },
+    [refreshEntries, refreshBacklinks],
+  );
+  const cloud = useCloudSync(root, applyOutsideChanges);
+  cloudSyncRef.current = () => cloud.requestSync();
+
+  // Pick up edits made outside Noodle (another editor, Syncthing, git pull…).
+  useEffect(() => {
+    if (!root) return;
+    let unlisten: (() => void) | undefined;
+    api
+      .onVaultChanged((paths) => {
+        applyOutsideChanges(paths);
+        cloud.requestSync();
+      })
+      .then((u) => (unlisten = u));
     return () => unlisten?.();
-  }, [root, refreshEntries, refreshBacklinks]);
+  }, [root, applyOutsideChanges, cloud.requestSync]);
 
   // Keyboard shortcuts.
   useEffect(() => {
@@ -397,6 +415,11 @@ export default function App() {
       <main className="main">
         <header className="topbar">
           <span className="breadcrumb">{note ? note.path.replace(/\.md$/i, "").split("/").join("  /  ") : ""}</span>
+          {cloud.linked && (
+            <button className={`cloud-pill ${cloud.status.kind}`} title={cloud.status.kind === "error" ? cloud.status.message : "Cloud sync (click to sync now)"} onClick={() => cloud.syncNow()}>
+              <Cloud size={14} /> {cloud.status.kind === "syncing" ? "Syncing" : cloud.status.kind === "error" ? "Sync problem" : "Synced"}
+            </button>
+          )}
           <span className={`save-state ${saving ? "busy" : ""}`}>{note ? (saving ? "Saving…" : "Saved") : ""}</span>
         </header>
         {error && (
@@ -438,7 +461,7 @@ export default function App() {
       </main>
       {overlay?.kind === "switcher" && <QuickSwitcher entries={entries} onOpen={openPath} onCreate={createNote} onClose={() => setOverlay(null)} />}
       {overlay?.kind === "search" && <SearchPanel onOpen={openPath} onClose={() => setOverlay(null)} />}
-      {overlay?.kind === "settings" && <SettingsPanel theme={theme} updates={updates} localApi={localApi} onChange={setTheme} onClose={() => setOverlay(null)} />}
+      {overlay?.kind === "settings" && <SettingsPanel theme={theme} updates={updates} localApi={localApi} cloud={cloud} root={root} onChange={setTheme} onClose={() => setOverlay(null)} />}
       {overlay?.kind === "prompt" && (
         <PromptModal
           title={overlay.title}
