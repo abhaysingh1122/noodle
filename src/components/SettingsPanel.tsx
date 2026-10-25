@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Copy, Check, Download, Eye, EyeOff, RefreshCw, KeyRound } from "lucide-react";
 import type { useLocalApi } from "../lib/localApi";
+import type { CloudSync } from "../lib/sync";
+import { Cloud, LogOut } from "lucide-react";
 import { DEFAULT_PORT, newApiKey } from "../lib/localApi";
 import type { Mode, ThemeSettings } from "../lib/theme";
 import type { useUpdates } from "../lib/updates";
@@ -97,10 +99,154 @@ function ApiSection({ localApi }: { localApi: ReturnType<typeof useLocalApi> }) 
   );
 }
 
+/** Connect a Supabase project, sign in with email, and link this vault to it. */
+function AccountSection({ cloud, root }: { cloud: CloudSync; root: string | null }) {
+  const [url, setUrl] = useState(cloud.config?.url ?? "");
+  const [anonKey, setAnonKey] = useState(cloud.config?.anonKey ?? "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ error: boolean; text: string } | null>(null);
+  const vaultName = root?.split(/[\\/]/).filter(Boolean).pop();
+
+  const run = async (work: () => Promise<string | void>) => {
+    setBusy(true);
+    setMessage(null);
+    try {
+      const done = await work();
+      if (done) setMessage({ error: false, text: done });
+    } catch (e) {
+      setMessage({ error: true, text: e instanceof Error ? e.message : String(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!cloud.client) {
+    return (
+      <div className="api-box">
+        <div className="api-head">
+          <div>
+            <b>
+              <Cloud size={16} /> Noodle Cloud
+            </b>
+            <p className="muted">
+              Sync your notes between your computer and phone with an email login. Noodle uses your own free Supabase project: create one at supabase.com, run
+              the <code>supabase/schema.sql</code> file from Noodle's repository in its SQL editor, then paste the project's URL and anon public key here.
+            </p>
+          </div>
+        </div>
+        <div className="account-form">
+          <input placeholder="Project URL, like https://abcd.supabase.co" value={url} onChange={(e) => setUrl(e.target.value)} />
+          <input placeholder="anon public key" value={anonKey} onChange={(e) => setAnonKey(e.target.value)} />
+          <button
+            className="primary"
+            disabled={!/^https:\/\/.+/.test(url.trim()) || anonKey.trim().length < 20}
+            onClick={() => cloud.setConfig({ url: url.trim(), anonKey: anonKey.trim(), vault: null })}
+          >
+            Connect
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!cloud.session) {
+    return (
+      <div className="api-box">
+        <b>
+          <Cloud size={16} /> Sign in to Noodle Cloud
+        </b>
+        <form
+          className="account-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            run(async () => {
+              const { error } = await cloud.client!.auth.signInWithPassword({ email, password });
+              if (error) throw new Error(error.message);
+            });
+          }}
+        >
+          <input type="email" autoComplete="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input type="password" autoComplete="current-password" placeholder="Password (8+ characters)" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <div className="prompt-buttons">
+            <button
+              type="button"
+              className="ghost"
+              disabled={busy || !email || password.length < 8}
+              onClick={() =>
+                run(async () => {
+                  const { data, error } = await cloud.client!.auth.signUp({ email, password });
+                  if (error) throw new Error(error.message);
+                  if (!data.session) return "Check your email and click the confirmation link, then sign in here.";
+                })
+              }
+            >
+              Create account
+            </button>
+            <button type="submit" className="primary" disabled={busy || !email || !password}>
+              Sign in
+            </button>
+          </div>
+        </form>
+        {message && <p className={message.error ? "error" : "api-live"}>{message.text}</p>}
+        <button className="ghost small-btn" onClick={() => cloud.setConfig(null)}>
+          Use a different Supabase project
+        </button>
+      </div>
+    );
+  }
+
+  const status = cloud.status;
+  return (
+    <div className="api-box">
+      <div className="api-head">
+        <div>
+          <b>
+            <Cloud size={16} /> Signed in as {cloud.session.user.email}
+          </b>
+          <p className="muted">
+            {cloud.linked
+              ? status.kind === "syncing"
+                ? "Syncing…"
+                : status.kind === "error"
+                  ? ""
+                  : status.kind === "idle" && status.at
+                    ? `“${vaultName}” is synced. Last sync ${status.at.toLocaleTimeString()}.`
+                    : `“${vaultName}” syncs with the cloud.`
+              : cloud.config?.vault
+                ? "Another vault is the synced one. Link this one instead to sync it."
+                : "Pick which vault to keep in the cloud."}
+          </p>
+        </div>
+      </div>
+      {status.kind === "error" && <p className="error">{status.message}</p>}
+      <div className="prompt-buttons account-actions">
+        <button className="ghost small-btn" onClick={() => cloud.client!.auth.signOut()}>
+          <LogOut size={14} /> Sign out
+        </button>
+        {cloud.linked ? (
+          <button className="primary" disabled={status.kind === "syncing"} onClick={() => cloud.syncNow()}>
+            <RefreshCw size={15} className={status.kind === "syncing" ? "spin" : ""} /> Sync now
+          </button>
+        ) : (
+          root && (
+            <button className="primary" onClick={() => cloud.setConfig({ ...cloud.config!, vault: root })}>
+              <Cloud size={15} /> Sync “{vaultName}”
+            </button>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function SettingsPanel(props: {
   theme: ThemeSettings;
   updates: ReturnType<typeof useUpdates>;
   localApi: ReturnType<typeof useLocalApi>;
+  cloud: CloudSync;
+  root: string | null;
   onChange(t: ThemeSettings): void;
   onClose(): void;
 }) {
@@ -147,6 +293,8 @@ export function SettingsPanel(props: {
             </button>
           ))}
         </div>
+        <h4>Account &amp; sync</h4>
+        <AccountSection cloud={props.cloud} root={props.root} />
         <h4>Connections</h4>
         <ApiSection localApi={props.localApi} />
         <h4>Updates</h4>
