@@ -120,6 +120,9 @@ async function fetchRemote(client: SupabaseClient, vaultId: string): Promise<Map
 }
 
 function describe(message: string): Error {
+  if (/delete_my_account/i.test(message)) {
+    return new Error("Account deletion isn't switched on yet: run the latest supabase/schema.sql in the Supabase SQL editor.");
+  }
   if (/relation .*(notes|vaults).* does not exist|Could not find the table/i.test(message)) {
     return new Error("Noodle Cloud isn't set up yet: run supabase/schema.sql in the Supabase SQL editor once.");
   }
@@ -334,6 +337,28 @@ export function useCloudSync(root: string | null, onRemoteChanges: (paths: strin
     });
   }, []);
 
+  /** Deletes the account and all its cloud vaults; the folders on this device are left alone. */
+  const deleteAccount = useCallback(async () => {
+    const uid = session?.user.id;
+    if (!uid) return;
+    // Attachments first: they live in Storage, which the database can't clean up by itself.
+    for (const v of await listCloudVaults(client)) {
+      const folder = `${uid}/${v.id}`;
+      for (;;) {
+        const { data } = await client.storage.from(BUCKET).list(folder, { limit: 1000 });
+        if (!data?.length) break;
+        const { error } = await client.storage.from(BUCKET).remove(data.map((f) => `${folder}/${f.name}`));
+        if (error) break;
+      }
+    }
+    const { error } = await client.rpc("delete_my_account");
+    if (error) throw describe(error.message);
+    writeJson(LINKS_KEY, {});
+    setLinks({});
+    await client.auth.signOut();
+    setVaults(null);
+  }, [client, session]);
+
   const signOut = useCallback(async () => {
     await client.auth.signOut();
     setVaults(null);
@@ -412,6 +437,7 @@ export function useCloudSync(root: string | null, onRemoteChanges: (paths: strin
     vaults,
     refreshVaults,
     signOut,
+    deleteAccount,
     syncNow,
     requestSync,
   };
