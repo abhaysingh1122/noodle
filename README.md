@@ -9,7 +9,7 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
 
 ## Why Noodle
 
-- **Your files, your computer.** A vault is just a folder of `.md` files. No account, no cloud, works offline, and any Markdown editor can still open your notes.
+- **Your files, your computer.** A vault is just a folder of `.md` files. Works offline, and any Markdown editor can still open your notes. The cloud is optional.
 - **Connected notes.** Type `[[` to tie one note to another. Every page shows the strands that lead to it, and the graph shows the whole bowl at once.
 - **Soft, round and calm.** Rounded floating panels, emoji badges, pastel banners, bubbly callouts and checklists.
 - **Make it yours.** Pastel green and yellow by default, with more palettes, your own accent colour, and light/dark mode.
@@ -39,19 +39,21 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
 | Updates | One-click updates from GitHub releases |
 | Motion | Banners unroll like a flag and knock the emoji badge askew (it stays straight until then) |
 
-## Cloud sync (optional)
+## Noodle Cloud (optional)
 
-Keep the same vault on your computer and your phone, with an email login. Noodle syncs through your **own** free [Supabase](https://supabase.com) project, so your notes never pass through anyone else's server.
+Sign in with your email the first time Noodle opens, and every vault you keep in the cloud shows up on your phone and other computers. Or skip it and keep everything on one device.
 
-1. Create a Supabase project.
-2. Open its **SQL editor**, paste [`supabase/schema.sql`](supabase/schema.sql) and run it once. It creates the notes table, the attachments bucket and rules so each account only ever sees its own notes.
-3. In Noodle, open **Settings → Account & sync**, paste the project URL and its *anon public* key, create an account with your email, and click **Sync "<your vault>"**.
+- Each account has its own vaults; nobody can see anyone else's.
+- The vault list shows vaults on this device and in the cloud, the most recently changed first. Tap a cloud vault to download it.
+- Every device keeps a full copy as plain files, so everything works offline. Changes go both ways within seconds while devices are online, and anything changed while a device was off or offline syncs the next time it opens. If the same note was edited on two devices at once, both versions are kept.
 
-Every device keeps a full copy of the notes as files, so everything works offline. Changes go both ways within seconds while both devices are online; if the same note was edited on two devices at once, both versions are kept.
+### Running your own Noodle Cloud
+
+The cloud is a [Supabase](https://supabase.com) project. To host your own, run [`supabase/schema.sql`](supabase/schema.sql) once in its SQL editor and put its URL and publishable key in `src/lib/sync.ts` and `.github/workflows/keepalive.yml` (which pings the project every two days so it is never paused). [`supabase/reset.sql`](supabase/reset.sql) wipes it for a fresh start.
 
 ## Local API
 
-Switch on **Settings → Connections → Local API** to let scripts and other apps on your computer read and write notes over HTTP. It listens on `127.0.0.1` only (port 27183 by default) and every call needs the key shown in Settings.
+Switch on **Settings → Connections → Local API** to let scripts, apps and AI assistants read and write notes over HTTP. It listens on `127.0.0.1` (port 27183 by default), or on your Wi-Fi too if you tick the box, and every call needs the key shown in Settings. It works on the phone app as well, while Noodle is open.
 
 ```sh
 # list notes
@@ -75,6 +77,15 @@ curl.exe -X POST http://127.0.0.1:27183/v1/notes/Inbox/append --data-binary "- n
 | GET | `/v1/search?q=<words>` | Search names and text |
 | GET | `/v1/backlinks/<path>` | Strands that lead to a note |
 | GET | `/v1/graph` | All notes and strands |
+| POST | `/mcp` | Model Context Protocol, for AI assistants |
+
+### Connect an AI assistant (MCP)
+
+`/mcp` exposes the vault as tools (`list_notes`, `read_note`, `write_note`, `append_to_note`, `search_notes`, `get_backlinks`). Settings shows the exact config to copy, for example:
+
+```json
+{ "mcpServers": { "noodle": { "type": "http", "url": "http://127.0.0.1:27183/mcp", "headers": { "Authorization": "Bearer <key>" } } } }
+```
 
 Changes made through the API show up in the open window right away. On Windows use `curl.exe` (in PowerShell plain `curl` is a different command).
 
