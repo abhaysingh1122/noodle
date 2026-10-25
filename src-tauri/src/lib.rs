@@ -35,8 +35,12 @@ impl http_api::VaultAccess for AppAccess {
 }
 
 fn content_hash(content: &str) -> u64 {
+    content_hash_bytes(content.as_bytes())
+}
+
+fn content_hash_bytes(bytes: &[u8]) -> u64 {
     let mut h = DefaultHasher::new();
-    content.hash(&mut h);
+    bytes.hash(&mut h);
     h.finish()
 }
 
@@ -190,6 +194,34 @@ fn create_vault(app: AppHandle, name: String, parent: Option<String>) -> CmdResu
     Ok(dir.to_string_lossy().into_owned())
 }
 
+/// Hashes of every note, folder and attachment, for cloud sync.
+#[tauri::command]
+async fn sync_snapshot(app: AppHandle) -> CmdResult<Vec<vault::SyncItem>> {
+    tauri::async_runtime::spawn_blocking(move || with_vault(&app.state::<AppState>(), |v| Ok(v.sync_snapshot())))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Raw bytes of a vault file (attachments), for uploading.
+#[tauri::command]
+fn read_bytes(state: State<AppState>, path: String) -> CmdResult<tauri::ipc::Response> {
+    with_vault(&state, |v| v.read_bytes(&path)).map(tauri::ipc::Response::new)
+}
+
+/// Writes raw bytes to an exact vault path (path in the x-path header), for downloads.
+#[tauri::command]
+fn write_bytes(state: State<AppState>, request: tauri::ipc::Request) -> CmdResult<()> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err("Expected raw bytes".into());
+    };
+    let path = request.headers().get("x-path").and_then(|h| h.to_str().ok()).ok_or("Missing x-path header")?;
+    let path = http_api::percent_decode(path);
+    if let Ok(mut own) = state.own_writes.lock() {
+        own.insert(path.clone(), content_hash_bytes(bytes));
+    }
+    with_vault(&state, |v| v.write_bytes(&path, bytes))
+}
+
 /// Copies an image chosen on the computer into the vault's attachments.
 #[tauri::command]
 fn import_image(state: State<AppState>, source: String) -> CmdResult<String> {
@@ -326,6 +358,9 @@ pub fn run() {
             create_vault,
             rename_vault,
             import_image,
+            sync_snapshot,
+            read_bytes,
+            write_bytes,
             save_attachment,
             list_entries,
             read_note,
