@@ -2299,3 +2299,55 @@ body.resizing {
 .signin-card .account-form input {
   background: var(--bg);
 }
+
+/* Account: codes, forgot password, manage account */
+.form-note {
+  margin: 0 4px 2px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+  text-align: left;
+}
+.account-form .code-input {
+  font-family: var(--mono);
+  font-size: 20px;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+.back-btn,
+.link-btn.forgot {
+  align-self: center;
+  margin-top: 4px;
+  font-size: 13px;
+}
+.manage-account {
+  margin-top: 12px;
+}
+.manage-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.manage-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.manage-tabs button.on {
+  background: var(--accent);
+  color: #1f2a17;
+}
+.manage-tabs button.danger.on,
+.danger-btn {
+  background: #e8836b;
+  color: #2b120b;
+}
+.manage-tabs button.danger:not(.on):hover {
+  color: #b0452c;
+}
