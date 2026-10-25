@@ -161,7 +161,7 @@ kbd {
   overflow: hidden;
 }
 .sidebar {
-  width: 268px;
+  width: var(--sidebar-w, 268px);
   flex: none;
   display: flex;
   flex-direction: column;
@@ -354,6 +354,55 @@ kbd {
 }
 .cloud-pill.off {
   margin-left: auto;
+}
+
+/* Sidebar: tuck it away, or drag its edge */
+.app.sidebar-hidden .sidebar,
+.app.sidebar-hidden .sidebar-resizer {
+  display: none;
+}
+.sidebar-resizer {
+  flex: none;
+  width: 10px;
+  margin: 0 -11px 0 -11px;
+  z-index: 3;
+  cursor: col-resize;
+  border-radius: var(--r-pill);
+  position: relative;
+}
+.sidebar-resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 4px;
+  height: 46px;
+  transform: translateY(-50%) rotate(4deg);
+  border-radius: 4px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.sidebar-resizer:hover::after,
+.resizing .sidebar-resizer::after {
+  opacity: 1;
+}
+body.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+.sidebar-toggle {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 50%;
+  color: var(--muted);
+}
+.sidebar-toggle:hover {
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* Top bar */
@@ -1257,6 +1306,13 @@ kbd {
     inset: 0;
     z-index: 44;
     background: rgba(20, 30, 10, 0.3);
+  }
+  .sidebar-toggle,
+  .sidebar-resizer {
+    display: none;
+  }
+  .app.sidebar-hidden .sidebar {
+    display: flex;
   }
   .drawer-button {
     display: grid;
