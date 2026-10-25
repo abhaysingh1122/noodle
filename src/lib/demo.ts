@@ -45,6 +45,7 @@ export const demoApi: Api = {
   pickFolder: async () => "Demo vault",
   openVault: async () => ({ root: "Demo vault", entries: entries() }),
   createVault: async () => "Demo vault",
+  defaultVault: async () => "Demo vault",
   renameVault: async (name) => ({ root: name, entries: entries() }),
   pickImage: async () => null,
   importImage: async (source) => source,
