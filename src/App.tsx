@@ -16,12 +16,16 @@ import { useUpdates } from "./lib/updates";
 import { setMediaResolver } from "./lib/media";
 import { useLocalApi } from "./lib/localApi";
 import { useCloudSync } from "./lib/sync";
-import { Cloud, Menu } from "lucide-react";
+import { Cloud, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 const RECENT_KEY = "noodle.lastVault";
 /** The note that was open last in each vault, so reopening lands on it again. */
 const lastNoteKey = (root: string) => `noodle.lastNote:${root}`;
 const SAVE_DELAY_MS = 300;
+const SIDEBAR_HIDDEN_KEY = "noodle.sidebarHidden";
+const SIDEBAR_WIDTH_KEY = "noodle.sidebarWidth";
+const DEFAULT_SIDEBAR = 268;
+const clampSidebar = (w: number) => Math.round(Math.min(480, Math.max(200, w)));
 
 interface OpenNote {
   path: string;
@@ -65,6 +69,9 @@ export default function App() {
   const [starting, setStarting] = useState(() => isDesktop && (isMobile || !!readRecent()));
   // On narrow screens (phones) the sidebar slides in as a drawer.
   const [drawer, setDrawer] = useState(false);
+  // On wider screens it can be tucked away (Ctrl \) and dragged wider or narrower.
+  const [sidebarHidden, setSidebarHidden] = useState(() => readStored(SIDEBAR_HIDDEN_KEY) === "1");
+  const [sidebarWidth, setSidebarWidth] = useState(() => clampSidebar(Number(readStored(SIDEBAR_WIDTH_KEY)) || DEFAULT_SIDEBAR));
   const [entries, setEntries] = useState<Entry[]>([]);
   const [note, setNote] = useState<OpenNote | null>(null);
   const [backlinks, setBacklinks] = useState<Backlink[]>([]);
@@ -273,6 +280,35 @@ export default function App() {
     return () => unlisten?.();
   }, [root, applyOutsideChanges, cloud.requestSync]);
 
+  const toggleSidebar = useCallback(() => {
+    if (window.matchMedia("(max-width: 760px)").matches) return setDrawer((d) => !d);
+    setSidebarHidden((h) => {
+      store(SIDEBAR_HIDDEN_KEY, h ? "0" : "1");
+      return !h;
+    });
+  }, []);
+
+  /** Drag the sidebar's edge to resize it; double-click puts it back. */
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startW = sidebarWidth;
+    let latest = startW;
+    document.body.classList.add("resizing");
+    const move = (ev: PointerEvent) => {
+      latest = clampSidebar(startW + ev.clientX - startX);
+      setSidebarWidth(latest);
+    };
+    const up = () => {
+      document.body.classList.remove("resizing");
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      store(SIDEBAR_WIDTH_KEY, String(latest));
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   // Keyboard shortcuts.
   useEffect(() => {
     if (!root) return;
@@ -285,13 +321,14 @@ export default function App() {
       else if (k === "n") createNote(note ? `${parentDir(note.path) ? parentDir(note.path) + "/" : ""}Untitled` : "Untitled");
       else if (k === ",") setOverlay({ kind: "settings" });
       else if (k === "g") setShowGraph((g) => !g);
+      else if (k === "\\") toggleSidebar();
       else if (k === "s") flushSave();
       else return;
       e.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [root, note, createNote, flushSave]);
+  }, [root, note, createNote, flushSave, toggleSidebar]);
 
   const promptNewNote = (folder: string) =>
     setOverlay({
@@ -387,7 +424,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app ${drawer ? "drawer-open" : ""}`}>
+    <div className={`app ${drawer ? "drawer-open" : ""} ${sidebarHidden ? "sidebar-hidden" : ""}`} style={{ "--sidebar-w": `${sidebarWidth}px` } as React.CSSProperties}>
       {drawer && <div className="drawer-shade" onClick={() => setDrawer(false)} />}
       <Sidebar
         vaultName={root.split(/[\\/]/).filter(Boolean).pop() ?? root}
@@ -417,10 +454,19 @@ export default function App() {
           setOverlay({ kind: "settings" });
         }}
       />
+      <div
+        className="sidebar-resizer"
+        title="Drag to resize, double-click to reset"
+        onPointerDown={startResize}
+        onDoubleClick={() => (setSidebarWidth(DEFAULT_SIDEBAR), store(SIDEBAR_WIDTH_KEY, String(DEFAULT_SIDEBAR)))}
+      />
       <main className="main">
         <header className="topbar">
           <button className="drawer-button" title="Notes" onClick={() => setDrawer(true)}>
             <Menu size={18} />
+          </button>
+          <button className="sidebar-toggle" title={sidebarHidden ? "Show sidebar (Ctrl \\)" : "Hide sidebar (Ctrl \\)"} onClick={toggleSidebar}>
+            {sidebarHidden ? <PanelLeftOpen size={17} /> : <PanelLeftClose size={17} />}
           </button>
           <span className="breadcrumb">{note ? note.path.replace(/\.md$/i, "").split("/").join("  /  ") : ""}</span>
           {!cloud.linked && (
