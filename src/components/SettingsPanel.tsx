@@ -287,7 +287,7 @@ export function SettingsPanel(props: {
   const t = props.theme;
   const set = (patch: Partial<ThemeSettings>) => props.onChange({ ...t, ...patch });
   return (
-    <Modal onClose={props.onClose} wide>
+    <Modal onClose={props.onClose} wide closable>
       <div className="settings">
         <header>
           <Logo size={36} />
