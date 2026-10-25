@@ -2098,3 +2098,25 @@ body.resizing {
   background: #fde2dd;
   color: #7a2a1d;
 }
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.api-example code.pre {
+  white-space: pre;
+  overflow-x: auto;
+}
+.api-grid .check-row {
+  color: var(--text);
+  font-weight: 600;
+}
+.api-grid .check-row input {
+  width: auto;
+  padding: 0;
+  accent-color: var(--accent);
+}
