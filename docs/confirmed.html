@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>You're in · Noodle</title>
+<link rel="icon" href="logo.svg">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet">
+<style>
+  :root { --text: #2e3326; --muted: #6f7865; --accent: #7db46c; --yellow: #fff3b0; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px;
+    font-family: Nunito, "Segoe UI", system-ui, sans-serif; color: var(--text);
+    background: radial-gradient(900px 500px at 0% 0%, #cdebc3, transparent 60%),
+                radial-gradient(800px 500px at 100% 100%, #fbe7a1, transparent 60%), #fffef7;
+  }
+  .card {
+    width: min(460px, 100%); background: #fff; border-radius: 36px; overflow: hidden; text-align: center;
+    box-shadow: 0 2px 6px rgba(60,80,40,.05), 0 20px 50px rgba(60,80,40,.14);
+  }
+  .banner { height: 110px; background: linear-gradient(120deg, #cdebc3, #fff3b0); animation: unfurl .9s cubic-bezier(.25,1.4,.45,1) both; }
+  .badge {
+    width: 92px; height: 92px; margin: -46px auto 0; border-radius: 30px; background: var(--yellow);
+    border: 6px solid #fff; display: grid; place-items: center; transform: rotate(-5deg);
+    animation: bump 1.1s cubic-bezier(.3,1.5,.5,1) both;
+  }
+  .badge img { width: 62px; height: 62px; }
+  h1 { margin: 18px 0 8px; font-size: 32px; font-weight: 900; letter-spacing: -.01em; }
+  p { margin: 0 28px; color: var(--muted); font-size: 16px; line-height: 1.6; font-weight: 600; }
+  .steps { margin: 22px 28px 30px; padding: 14px 18px; border-radius: 22px; background: #f3f8ec; text-align: left; font-weight: 700; line-height: 1.9; }
+  .steps b { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--accent); color: #1f2a17; font-size: 13px; margin-right: 8px; }
+  .error { display: none; }
+  .failed .ok { display: none; }
+  .failed .error { display: block; }
+  @keyframes unfurl { from { height: 0; } }
+  @keyframes bump { 0%,30% { transform: rotate(0) translateY(-20px); } 55% { transform: rotate(-16deg); } 80% { transform: rotate(2deg); } }
+  @media (prefers-reduced-motion: reduce) { .banner, .badge { animation: none; } }
+</style>
+</head>
+<body>
+  <main class="card" id="card">
+    <div class="banner"></div>
+    <div class="badge"><img src="logo.svg" alt=""></div>
+    <div class="ok">
+      <h1>You're in! 🎉</h1>
+      <p>Your email is confirmed. Your bowl of notes is ready to sync.</p>
+      <div class="steps">
+        <div><b>1</b>Go back to Noodle</div>
+        <div><b>2</b>Settings → Account &amp; sync → <u>Sign in</u></div>
+        <div><b>3</b>Press <u>Sync</u> and you're done</div>
+      </div>
+    </div>
+    <div class="error">
+      <h1>Hmm, that link didn't work</h1>
+      <p id="why">It may have expired or been used already.</p>
+      <div class="steps"><div><b>1</b>Open Noodle → Settings → Account &amp; sync</div><div><b>2</b>Sign in, or create the account again for a fresh email</div></div>
+    </div>
+  </main>
+  <script>
+    // Supabase sends people here after the email link, with any error in the address.
+    const params = new URLSearchParams(location.hash.slice(1) + "&" + location.search.slice(1));
+    if (params.get("error")) {
+      document.getElementById("card").classList.add("failed");
+      if (params.get("error_description")) document.getElementById("why").textContent = params.get("error_description").replace(/\+/g, " ");
+    }
+    // Don't leave sign-in tokens sitting in the address bar.
+    if (location.hash) history.replaceState(null, "", location.pathname);
+  </script>
+</body>
+</html>
