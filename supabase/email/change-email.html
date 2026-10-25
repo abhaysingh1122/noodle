@@ -33,16 +33,8 @@
           <td style="padding:62px 40px 8px 40px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#2e3326;">
             <div style="display:inline-block;margin:0 0 12px 0;padding:5px 14px;border-radius:999px;background:#eef0dc;color:#55621f;font-size:12px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;">New address</div>
             <h1 style="margin:0 0 12px 0;font-size:30px;line-height:1.2;font-weight:900;letter-spacing:-0.01em;">Confirm your new email</h1>
-            <p style="margin:0 0 26px 0;font-size:16px;line-height:1.65;color:#5d6652;">You asked to move your Noodle account from <b>{{ .Email }}</b> to <b>{{ .NewEmail }}</b>. Confirm it and future emails will go to the new address.</p>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-              <tr>
-                <td style="border-radius:999px;background:#8a9a3c;box-shadow:0 4px 0 #62702a;">
-                  <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:15px 30px;font-family:'Nunito','Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:17px;font-weight:800;color:#1f2a17;text-decoration:none;border-radius:999px;">Use my new email &nbsp;&rarr;</a>
-                </td>
-              </tr>
-            </table>
-            <p style="margin:28px 0 0 0;font-size:13px;line-height:1.6;color:#7a8270;">Button not working? Paste this into your browser:<br>
-              <a href="{{ .ConfirmationURL }}" style="color:#5d6b22;word-break:break-all;">{{ .ConfirmationURL }}</a></p>
+            <p style="margin:0 0 26px 0;font-size:16px;line-height:1.65;color:#5d6652;">You asked to move your Noodle account from <b>{{ .Email }}</b> to <b>{{ .NewEmail }}</b>. Type this code into Noodle to confirm it:</p>
+            <div style="display:inline-block;padding:16px 28px;border-radius:24px;background:#eef0dc;border:2px dashed #8a9a3c;font-family:'Cascadia Code',Consolas,monospace;font-size:34px;font-weight:800;letter-spacing:0.25em;color:#2e3326;transform:rotate(-1deg);">{{ .Token }}</div>
           </td>
         </tr>
         <tr>
