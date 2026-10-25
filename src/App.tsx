@@ -15,7 +15,9 @@ import { GraphView } from "./components/GraphView";
 import { useUpdates } from "./lib/updates";
 import { setMediaResolver } from "./lib/media";
 import { useLocalApi } from "./lib/localApi";
-import { useCloudSync } from "./lib/sync";
+import { useCloudSync, type CloudSync, type CloudVault } from "./lib/sync";
+import { folderName, forgetVault, readHistory, rememberVault } from "./lib/vaults";
+import { SignInScreen } from "./components/SignIn";
 import { Cloud, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 const RECENT_KEY = "noodle.lastVault";
@@ -66,7 +68,10 @@ export default function App() {
   rootRef.current = root;
   // On the desktop, the last vault reopens by itself; the welcome screen
   // only shows while that is happening or if it fails.
-  const [starting, setStarting] = useState(() => isDesktop && (isMobile || !!readRecent()));
+  const [starting, setStarting] = useState(() => isDesktop && !!readRecent());
+  const [history, setHistory] = useState(readHistory);
+  // Shown over the vault list when someone who skipped signing in asks for it.
+  const [signingIn, setSigningIn] = useState(false);
   // On narrow screens (phones) the sidebar slides in as a drawer.
   const [drawer, setDrawer] = useState(false);
   // On wider screens it can be tucked away (Ctrl \) and dragged wider or narrower.
@@ -93,6 +98,7 @@ export default function App() {
   const editorFlush = useRef<(() => void) | null>(null);
   // Set once cloud sync is ready; saving a note asks it to sync soon.
   const cloudSyncRef = useRef<(() => void) | null>(null);
+  const cloudRef = useRef<CloudSync | null>(null);
 
   useEffect(() => {
     applyTheme(theme);
@@ -164,6 +170,7 @@ export default function App() {
         setMediaResolver((p) => api.fileUrl(info.root, p));
         setError(null);
         store(RECENT_KEY, info.root);
+        setHistory(rememberVault(info.root));
         const last = readStored(lastNoteKey(info.root));
         const first = info.entries.find((e) => e.kind === "file" && e.path === last) ?? info.entries.find((e) => e.kind === "file" && /^(welcome|readme|home|index)\.md$/i.test(e.path)) ?? info.entries.find((e) => e.kind === "file");
         setNote(null);
@@ -180,8 +187,7 @@ export default function App() {
 
   useEffect(() => {
     const recent = readRecent();
-    if (isMobile) api.defaultVault().then(openVault, (e) => (setError(String(e)), setStarting(false)));
-    else if (isDesktop && recent) openVault(recent);
+    if (isDesktop && recent) openVault(recent);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -194,7 +200,24 @@ export default function App() {
           if (!picked) return;
           parent = picked;
         }
-        openVault(await api.createVault(name, parent));
+        const path = await api.createVault(name, parent);
+        // Signed in: new vaults go to the cloud straight away.
+        if (cloudRef.current?.session) await cloudRef.current.keepInCloud(path, folderName(path)).catch((e) => setError(String(e)));
+        openVault(path);
+      } catch (e) {
+        setError(String(e));
+      }
+    },
+    [openVault],
+  );
+
+  /** A cloud vault that isn't on this device yet: make a folder for it, link it, and let sync fill it. */
+  const openCloudVault = useCallback(
+    async (vault: CloudVault) => {
+      try {
+        const path = await api.createVault(vault.name);
+        cloudRef.current?.linkFolder(path, vault);
+        openVault(path);
       } catch (e) {
         setError(String(e));
       }
@@ -266,6 +289,7 @@ export default function App() {
   );
   const cloud = useCloudSync(root, applyOutsideChanges);
   cloudSyncRef.current = () => cloud.requestSync();
+  cloudRef.current = cloud;
 
   // Pick up edits made outside Noodle (another editor, Syncthing, git pull…).
   useEffect(() => {
@@ -399,6 +423,12 @@ export default function App() {
           setRoot(info.root);
           setEntries(info.entries);
           store(RECENT_KEY, info.root);
+          if (old) {
+            setHistory(forgetVault(old));
+            const link = cloud.links[old];
+            if (link) (cloud.linkFolder(old, null), cloud.linkFolder(info.root, link));
+          }
+          setHistory(rememberVault(info.root));
           const last = old && readStored(lastNoteKey(old));
           if (last) store(lastNoteKey(info.root), last);
         } catch (e) {
@@ -418,9 +448,29 @@ export default function App() {
     scheduleSave();
   };
 
+  // Signing in comes first (on the app; the web demo has no accounts).
+  if (isDesktop && (!cloud.ready || (!cloud.session && (!cloud.skipped || signingIn)))) {
+    if (!cloud.ready) return <div className="welcome" />;
+    return <SignInScreen client={cloud.client} onSkip={() => (cloud.setSkipped(true), setSigningIn(false))} />;
+  }
+
   if (!root) {
     if (starting) return <div className="welcome" />;
-    return <Welcome recent={readRecent()} error={error} onPick={pickVault} onOpenRecent={openVault} onCreate={createVault} />;
+    return (
+      <Welcome
+        history={history}
+        cloudVaults={cloud.vaults}
+        links={cloud.links}
+        email={cloud.session?.user.email ?? null}
+        error={error}
+        onPick={pickVault}
+        onOpen={openVault}
+        onOpenCloud={openCloudVault}
+        onForget={(path) => setHistory(forgetVault(path))}
+        onSignIn={() => setSigningIn(true)}
+        onCreate={createVault}
+      />
+    );
   }
 
   return (
@@ -446,6 +496,7 @@ export default function App() {
           await flushSave();
           setNote(null);
           setRoot(null);
+          cloud.refreshVaults();
         }}
         updateVersion={updates.state.kind === "available" ? updates.state.info.latest : null}
         onUpdate={async () => {
@@ -481,6 +532,20 @@ export default function App() {
           )}
           <span className={`save-state ${saving ? "busy" : ""}`}>{note ? (saving ? "Saving…" : "Saved") : ""}</span>
         </header>
+        {cloud.session && !cloud.linked && !cloud.declined && (
+          <div className="cloud-offer">
+            <Cloud size={18} />
+            <span>
+              Keep <b>{folderName(root)}</b> in Noodle Cloud, so it's on your phone and other computers too?
+            </span>
+            <button className="ghost small-btn" onClick={() => cloud.decline(root)}>
+              Not now
+            </button>
+            <button className="primary small-btn" onClick={() => cloud.keepInCloud(root, folderName(root)).catch((e) => setError(String(e)))}>
+              Sync it
+            </button>
+          </div>
+        )}
         {error && (
           <div className="error-bar" onClick={() => setError(null)}>
             {error} <span className="muted">(click to dismiss)</span>
