@@ -39,6 +39,16 @@ A local-first notes app: your notes are plain Markdown files in a folder you own
 | Updates | One-click updates from GitHub releases |
 | Motion | Banners unroll like a flag and knock the emoji badge askew (it stays straight until then) |
 
+## Cloud sync (optional)
+
+Keep the same vault on your computer and your phone, with an email login. Noodle syncs through your **own** free [Supabase](https://supabase.com) project, so your notes never pass through anyone else's server.
+
+1. Create a Supabase project.
+2. Open its **SQL editor**, paste [`supabase/schema.sql`](supabase/schema.sql) and run it once. It creates the notes table, the attachments bucket and rules so each account only ever sees its own notes.
+3. In Noodle, open **Settings → Account & sync**, paste the project URL and its *anon public* key, create an account with your email, and click **Sync "<your vault>"**.
+
+Every device keeps a full copy of the notes as files, so everything works offline. Changes go both ways within seconds while both devices are online; if the same note was edited on two devices at once, both versions are kept.
+
 ## Local API
 
 Switch on **Settings → Connections → Local API** to let scripts and other apps on your computer read and write notes over HTTP. It listens on `127.0.0.1` only (port 27183 by default) and every call needs the key shown in Settings.
